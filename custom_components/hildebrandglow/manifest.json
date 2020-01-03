@@ -1,0 +1,14 @@
+{
+  "domain": "hildebrandglow",
+  "name": "Hildebrand Glow",
+  "config_flow": true,
+  "documentation": "https://github.com/unlobito/ha-hildebrandglow",
+  "requirements": ["requests"],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@unlobito"
+  ]
+}

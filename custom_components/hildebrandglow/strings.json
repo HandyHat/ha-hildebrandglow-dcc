@@ -1,0 +1,23 @@
+{
+  "config": {
+    "title": "Hildebrand Glow",
+    "step": {
+      "user": {
+        "title": "Hildebrand Glow API access",
+        "data": {
+          "app_id": "Application ID",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect, please try again",
+      "invalid_auth": "Unable to authenticate.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  }
+}
