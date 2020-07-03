@@ -13,14 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 DATA_SCHEMA = vol.Schema({"app_id": str, "username": str, "password": str})
 
 
-async def validate_input(hass: core.HomeAssistant, data: dict) -> Dict[str, Any]:
-    """Validate the user input allows us to connect.
-
-    Data has the keys from DATA_SCHEMA with values provided by the user.
-    """
-    glow = await Glow.authenticate(data["app_id"], data["username"], data["password"])
-
-    # Return some info we want to store in the config entry.
+def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
+    """Prepare a ConfigEntity with authentication data and a temporary token."""
     return {
         "name": glow["name"],
         "app_id": data["app_id"],
@@ -29,6 +23,19 @@ async def validate_input(hass: core.HomeAssistant, data: dict) -> Dict[str, Any]
         "token": glow["token"],
         "token_exp": glow["exp"],
     }
+
+
+async def validate_input(hass: core.HomeAssistant, data: dict) -> Dict[str, Any]:
+    """Validate the user input allows us to connect.
+
+    Data has the keys from DATA_SCHEMA with values provided by the user.
+    """
+    glow = await hass.async_add_executor_job(
+        Glow.authenticate, data["app_id"], data["username"], data["password"]
+    )
+
+    # Return some info we want to store in the config entry.
+    return config_object(data, glow)
 
 
 class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

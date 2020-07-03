@@ -17,9 +17,7 @@ class Glow:
         self.token = token
 
     @classmethod
-    async def authenticate(
-        cls, app_id: str, username: str, password: str
-    ) -> Dict[str, Any]:
+    def authenticate(cls, app_id: str, username: str, password: str) -> Dict[str, Any]:
         """
         Attempt to authenticate with Glowmarkt.
 
@@ -42,7 +40,7 @@ class Glow:
             pprint(data)
             raise InvalidAuth
 
-    async def retrieve_resources(self) -> List[Dict[str, Any]]:
+    def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
         url = f"{self.BASE_URL}/resource"
         headers = {"applicationId": self.app_id, "token": self.token}
@@ -58,7 +56,7 @@ class Glow:
         data = response.json()
         return data
 
-    async def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+    def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
         url = f"{self.BASE_URL}/resource/{resource}/current"
         headers = {"applicationId": self.app_id, "token": self.token}
