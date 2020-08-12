@@ -40,6 +40,22 @@ class Glow:
             pprint(data)
             raise InvalidAuth
 
+    def retrieve_devices(self) -> List[Dict[str, Any]]:
+        """Retrieve the Zigbee devices known to Glowmarkt for the authenticated user."""
+        url = f"{self.BASE_URL}/device"
+        headers = {"applicationId": self.app_id, "token": self.token}
+
+        try:
+            response = requests.get(url, headers=headers)
+        except requests.Timeout:
+            raise CannotConnect
+
+        if response.status_code != 200:
+            raise InvalidAuth
+
+        data = response.json()
+        return data
+
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
         url = f"{self.BASE_URL}/resource"
