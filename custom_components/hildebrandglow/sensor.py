@@ -52,7 +52,7 @@ async def async_setup_entry(
                 sensor = GlowConsumptionCurrent(glow, resource)
                 new_entities.append(sensor)
 
-    async_add_entities([sensor])
+        async_add_entities(new_entities)
 
     return True
 
@@ -104,7 +104,7 @@ class GlowConsumptionCurrent(Entity):
             human_type = "gas"
 
         return {
-            "identifiers": {(DOMAIN, self.resource["dataSourceUnitInfo"]["shid"])},
+            "identifiers": {(DOMAIN, self.resource["resourceId"])},
             "name": f"Smart Meter, {human_type}",
         }
 
