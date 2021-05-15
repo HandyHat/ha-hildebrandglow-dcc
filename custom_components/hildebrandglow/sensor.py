@@ -48,7 +48,7 @@ async def async_setup_entry(
             glow = hass.data[DOMAIN][entry]
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         for resource in resources:
-            if resource["resourceTypeId"] in GlowConsumptionCurrent.resourceTypeId:
+            if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
                 sensor = GlowConsumptionCurrent(glow, resource)
                 new_entities.append(sensor)
 
@@ -62,10 +62,7 @@ class GlowConsumptionCurrent(Entity):
 
     hass: HomeAssistant
 
-    resourceTypeId = [
-        "ea02304a-2820-4ea0-8399-f1d1b430c3a0",  # Smart Meter, electricity consumption
-        "672b8071-44ff-4f23-bca2-f50c6a3ddd02",  # Smart Meter, gas consumption
-    ]
+    knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
     available = True
 
