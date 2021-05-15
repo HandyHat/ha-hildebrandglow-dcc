@@ -9,13 +9,13 @@ install-dev:
 
 ##  format         Run linters on the codebase and attempt to fix any issues found
 format:
-	isort --recursive custom_components
+	isort custom_components
 	black -l 88 -t py38 custom_components
 	flake8 custom_components
 	mypy custom_components/hildebrandglow/
 
 lint-isort:
-	isort --check --recursive custom_components
+	isort --check custom_components
 
 lint-black:
 	black -l 88 -t py38 --check custom_components

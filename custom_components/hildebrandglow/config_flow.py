@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict
 
 import voluptuous as vol
-from homeassistant import config_entries, core
+from homeassistant import config_entries, core, data_entry_flow
 
 from .const import APP_ID, DOMAIN  # pylint:disable=unused-import
 from .glow import CannotConnect, Glow, InvalidAuth
@@ -43,7 +43,9 @@ class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.SOURCE_USER
 
-    async def async_step_user(self, user_input: Dict = None) -> Dict[str, Any]:
+    async def async_step_user(
+        self, user_input: Dict = None
+    ) -> data_entry_flow.FlowResult:
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
