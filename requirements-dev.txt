@@ -1,4 +1,4 @@
-black==19.10b0
-flake8==3.7.9
-isort==4.3.21
-mypy==0.770
+black==21.4b0
+flake8==3.9.1
+isort==5.8.0
+mypy==0.812

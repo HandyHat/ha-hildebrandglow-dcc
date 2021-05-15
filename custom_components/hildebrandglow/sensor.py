@@ -35,7 +35,7 @@ async def async_setup_entry(
     for entry in hass.data[DOMAIN]:
         glow = hass.data[DOMAIN][entry]
 
-        resources: dict = dict()
+        resources: dict = {}
 
         try:
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
