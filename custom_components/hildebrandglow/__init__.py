@@ -6,8 +6,10 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .config_flow import config_object
 from .const import APP_ID, DOMAIN
-from .glow import Glow
+from .glow import Glow, InvalidAuth
+from .sensor import GlowConsumptionCurrent
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
@@ -19,6 +21,23 @@ async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
     hass.data[DOMAIN] = {}
 
     return True
+
+
+async def handle_failed_auth(config: ConfigEntry, hass: HomeAssistant) -> None:
+    """Attempt to refresh the current Glow token."""
+    glow_auth = await hass.async_add_executor_job(
+        Glow.authenticate,
+        APP_ID,
+        config.data["username"],
+        config.data["password"],
+    )
+
+    current_config = dict(config.data.copy())
+    new_config = config_object(current_config, glow_auth)
+    hass.config_entries.async_update_entry(entry=config, data=new_config)
+
+    glow = Glow(APP_ID, glow_auth["token"])
+    hass.data[DOMAIN][config.entry_id] = glow
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -17,17 +17,7 @@ async def async_setup_entry(
     """Set up the sensor platform."""
     new_entities = []
 
-    async def handle_failed_auth(config: ConfigEntry, hass: HomeAssistant) -> None:
-        glow_auth = await hass.async_add_executor_job(
-            Glow.authenticate, APP_ID, config.data["username"], config.data["password"],
-        )
 
-        current_config = dict(config.data.copy())
-        new_config = config_object(current_config, glow_auth)
-        hass.config_entries.async_update_entry(entry=config, data=new_config)
-
-        glow = Glow(APP_ID, glow_auth["token"])
-        hass.data[DOMAIN][config.entry_id] = glow
 
     for entry in hass.data[DOMAIN]:
         glow = hass.data[DOMAIN][entry]
@@ -62,6 +52,7 @@ class GlowConsumptionCurrent(Entity):
     knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
     available = True
+    should_poll = False
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
@@ -122,17 +113,3 @@ class GlowConsumptionCurrent(Entity):
             return POWER_WATT
         else:
             return None
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        try:
-            self._state = await self.hass.async_add_executor_job(
-                self.glow.current_usage, self.resource["resourceId"]
-            )
-        except InvalidAuth:
-            # TODO: Trip the failed auth logic above somehow
-            self.available = False
-            pass
