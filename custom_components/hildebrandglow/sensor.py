@@ -45,12 +45,13 @@ class GlowConsumptionCurrent(Entity):
 
     knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
+    _state: Optional[Meter]
     available = True
     should_poll = False
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
-        self._state: Optional[Meter] = None
+        self._state = None
         self.glow = glow
         self.resource = resource
 
@@ -91,7 +92,7 @@ class GlowConsumptionCurrent(Entity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            return self._state.consumption
+            return self._state.historical_consumption.instantaneous_demand
         else:
             return None
 

@@ -27,7 +27,7 @@ class Glow:
     token: str
 
     hardwareId: str
-    broker: mqtt
+    broker: mqtt.Client
 
     sensors: Dict[str, GlowConsumptionCurrent] = {}
 
@@ -111,8 +111,6 @@ class Glow:
 
     def _cb_on_message(self, client, userdata, msg):
         """Receive a PUBLISH message from the server."""
-        print(msg.topic + " " + str(msg.payload))
-
         payload = MQTTPayload(msg.payload)
 
         if "electricity.consumption" in self.sensors:
