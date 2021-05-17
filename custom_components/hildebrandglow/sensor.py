@@ -2,7 +2,7 @@
 from typing import Any, Callable, Dict, Optional
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import DEVICE_CLASS_POWER, POWER_WATT
+from homeassistant.const import DEVICE_CLASS_POWER, POWER_WATT, VOLUME_CUBIC_METERS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity
 
@@ -92,7 +92,11 @@ class GlowConsumptionCurrent(Entity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            return self._state.historical_consumption.instantaneous_demand
+            if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+                return self._state.historical_consumption.instantaneous_demand
+            elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+                alt = self._state.alternative_historical_consumption
+                return alt.current_day_consumption_delivered
         else:
             return None
 
@@ -110,6 +114,9 @@ class GlowConsumptionCurrent(Entity):
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
         if self._state is not None:
-            return POWER_WATT
+            if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+                return POWER_WATT
+            elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+                return VOLUME_CUBIC_METERS
         else:
             return None

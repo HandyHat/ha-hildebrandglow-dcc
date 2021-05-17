@@ -116,6 +116,9 @@ class Glow:
         if "electricity.consumption" in self.sensors:
             self.sensors["electricity.consumption"].update_state(payload)
 
+        if "gas.consumption" in self.sensors:
+            self.sensors["gas.consumption"].update_state(payload)
+
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
         url = f"{self.BASE_URL}/resource"
