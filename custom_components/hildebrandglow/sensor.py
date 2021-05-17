@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
+from .mqttpayload import Meter
 
 
 async def async_setup_entry(
@@ -29,6 +30,7 @@ async def async_setup_entry(
         for resource in resources:
             if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
                 sensor = GlowConsumptionCurrent(glow, resource)
+                glow.register_sensor(sensor, resource)
                 new_entities.append(sensor)
 
         async_add_entities(new_entities)
@@ -48,7 +50,7 @@ class GlowConsumptionCurrent(Entity):
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
-        self._state: Optional[Dict[str, Any]] = None
+        self._state: Optional[Meter] = None
         self.glow = glow
         self.resource = resource
 
@@ -89,9 +91,14 @@ class GlowConsumptionCurrent(Entity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            return self._state["data"][0][1]
+            return self._state.consumption
         else:
             return None
+
+    def update_state(self, meter) -> None:
+        """Receive an MQTT update from Glow and update the internal state."""
+        self._state = meter.electricity
+        self.async_write_ha_state()
 
     @property
     def device_class(self) -> str:
@@ -101,7 +108,7 @@ class GlowConsumptionCurrent(Entity):
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        if self._state is not None and self._state["units"] == "W":
+        if self._state is not None:
             return POWER_WATT
         else:
             return None

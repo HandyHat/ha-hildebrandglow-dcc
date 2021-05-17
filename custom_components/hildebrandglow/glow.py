@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 """Classes for interacting with the Glowmarkt API."""
 from pprint import pprint
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import requests
 from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_1
 from homeassistant import exceptions
+
+from .mqttpayload import MQTTPayload
+
+if TYPE_CHECKING:
+    from .sensor import GlowConsumptionCurrent
 
 
 class Glow:
@@ -20,6 +27,8 @@ class Glow:
 
     hardwareId: str
     broker: MQTTClient
+
+    sensors: Dict[str, GlowConsumptionCurrent] = dict()
 
     def __init__(self, app_id: str, username: str, password: str):
         """Create an authenticated Glow object."""
@@ -101,7 +110,11 @@ class Glow:
         while True:
             message = await self.broker.deliver_message()
             packet = message.publish_packet.payload.data.decode()
-            print(packet)
+
+            payload = MQTTPayload(packet)
+
+            if "electricity.consumption" in self.sensors:
+                self.sensors["electricity.consumption"].update_state(payload)
 
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
@@ -134,6 +147,9 @@ class Glow:
 
         data = response.json()
         return data
+
+    def register_sensor(self, sensor, resource):
+        self.sensors[resource["classifier"]] = sensor
 
 
 class CannotConnect(exceptions.HomeAssistantError):
