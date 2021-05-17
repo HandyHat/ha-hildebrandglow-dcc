@@ -59,7 +59,7 @@ class Meter:
                 else None
             )
             self.supply_status = self.SupplyStatus(
-                reading_information_set.get("07", "00")
+                reading_information_set.get("14", "00")
             )
 
     class MeterStatus:
