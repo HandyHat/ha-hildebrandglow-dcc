@@ -1,17 +1,39 @@
+"""Helper classes for Zigbee Smart Energy Profile data."""
 import json
 from enum import Enum
 from typing import Any, Dict
 
 
 class Meter:
+    """Information received regarding a single smart meter."""
+
     class ReadingInformationSet:
+        """Attributes providing remote access to meter readings."""
+
+        class SupplyStatus(Enum):
+            """Meter supply states."""
+
+            OFF = "00"
+            ARMED = "01"
+            ON = "02"
+
         current_summation_delivered: int
+        """Import energy usage"""
+
         current_summation_received: int
+        """Export energy usage"""
+
         current_max_demand_delivered: int
+        """Maximum import energy usage rate"""
+
         reading_snapshot_time: str
-        supply_status: int
+        """Last time all of the reported attributed were updated"""
+
+        supply_status: SupplyStatus
+        """Current state of the meter's supply."""
 
         def __init__(self, payload: Dict[str, Any]):
+            """Parse meter readings from the received payload."""
             reading_information_set = (
                 payload["0702"]["00"] if "00" in payload["0702"] else {}
             )
@@ -36,40 +58,66 @@ class Meter:
                 if "07" in reading_information_set
                 else None
             )
-            self.supply_status = (
-                int(reading_information_set["07"], 16)
-                if "07" in reading_information_set
-                else None
+            self.supply_status = self.SupplyStatus(
+                reading_information_set.get("07", "00")
             )
 
     class MeterStatus:
+        """Information about the meter's error conditions."""
+
         status: str
+        """Meter error conditions"""
 
         def __init__(self, payload: Dict[str, Any]):
+            """Parse meter error conditions from the received payload."""
             meter_status = payload["0702"]["02"] if "02" in payload["0702"] else {}
 
             self.status = meter_status.get("00")
 
     class Formatting:
+        """Information about the format used for metering data."""
+
         class UnitofMeasure(Enum):
+            """Units of Measurement."""
+
             KWH = "00"
             M3 = "01"
 
         class MeteringDeviceType(Enum):
+            """Metering Device Types."""
+
             ELECTRIC = "00"
             GAS = "80"
 
         unit_of_measure: UnitofMeasure
+        """Unit for the measured value."""
+
         multiplier: int
+        """Multiplier value for smart meter readings."""
+
         divisor: int
+        """Divisor value for smart meter readings."""
+
         summation_formatting: str
+        """Bitmap representing decimal places in Summation readings."""
+
         demand_formatting: str
+        """Bitmap representing decimal places in Demand readings."""
+
         metering_device_type: MeteringDeviceType
+        """Smart meter device type."""
+
         siteID: str
+        """Electricicity MPAN / Gas MPRN."""
+
         meter_serial_number: str
+        """Smart meter serial number."""
+
         alternative_unit_of_measure: UnitofMeasure
+        """Alternative unit for the measured value."""
 
         def __init__(self, payload: Dict[str, Any]):
+            """Parse formatting data from the received payload."""
             formatting = payload["0702"]["03"] if "03" in payload["0702"] else {}
 
             self.unit_of_measure = self.UnitofMeasure(formatting.get("00", "00"))
@@ -89,12 +137,22 @@ class Meter:
             )
 
     class HistoricalConsumption:
+        """Information about the meter's historical readings."""
+
         instantaneous_demand: int
+        """Instantaneous import energy usage rate"""
+
         current_day_consumption_delivered: int
+        """Import energy used in the current day."""
+
         current_week_consumption_delivered: int
+        """Import energy used in the current week."""
+
         current_month_consumption_delivered: int
+        """Import energy used in the current month."""
 
         def __init__(self, payload: Dict[str, Any]):
+            """Parse historical meter readings from the received payload."""
             historical_consumption = (
                 payload["0702"]["04"] if "04" in payload["0702"] else {}
             )
@@ -121,11 +179,19 @@ class Meter:
             )
 
     class AlternativeHistoricalConsumption:
+        """Information about the meter's altenative historical readings."""
+
         current_day_consumption_delivered: int
+        """Import energy used in the current day."""
+
         current_week_consumption_delivered: int
+        """Import energy used in the current week."""
+
         current_month_consumption_delivered: int
+        """Import energy used in the current month."""
 
         def __init__(self, payload: Dict[str, Any]):
+            """Parse alternative historical meter readings from the received payload."""
             alternative_historical_consumption = (
                 payload["0702"]["0C"] if "0C" in payload["0702"] else {}
             )
@@ -147,6 +213,7 @@ class Meter:
             )
 
     def __init__(self, payload: Dict[str, Any]):
+        """Parse meter data from the received payload using helper classes."""
         self.reading_information_set = self.ReadingInformationSet(payload)
         self.meter_status = self.MeterStatus(payload)
         self.formatting = self.Formatting(payload)
@@ -163,10 +230,16 @@ class Meter:
 
 
 class MQTTPayload:
+    """Object representing a payload received over MQTT."""
+
     electricity: Meter
+    """Data interpreted from an electricity meter."""
+
     gas: Meter
+    """Data interpreted from a gas meter."""
 
     def __init__(self, payload: str):
+        """Create internal Meter instances based off the unprocessed payload."""
         payload = json.loads(payload)
         self.electricity = (
             Meter(payload["elecMtr"]) if "03" in payload["elecMtr"]["0702"] else None
