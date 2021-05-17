@@ -3,10 +3,9 @@ from pprint import pprint
 from typing import Any, Dict, List
 
 import requests
-from homeassistant import exceptions
-
 from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_1
+from homeassistant import exceptions
 
 
 class Glow:
@@ -14,24 +13,29 @@ class Glow:
 
     BASE_URL = "https://api.glowmarkt.com/api/v0-1"
 
+    username: str
+    password: str
+
+    token: str
+
     hardwareId: str
     broker: MQTTClient
 
-    def __init__(self, app_id: str, token: str):
+    def __init__(self, app_id: str, username: str, password: str):
         """Create an authenticated Glow object."""
         self.app_id = app_id
-        self.token = token
+        self.username = username
+        self.password = password
 
-    @classmethod
-    def authenticate(cls, app_id: str, username: str, password: str) -> Dict[str, Any]:
+    def authenticate(self) -> None:
         """
         Attempt to authenticate with Glowmarkt.
 
         Returns a time-limited access token.
         """
-        url = f"{cls.BASE_URL}/auth"
-        auth = {"username": username, "password": password}
-        headers = {"applicationId": app_id}
+        url = f"{self.BASE_URL}/auth"
+        auth = {"username": self.username, "password": self.password}
+        headers = {"applicationId": self.app_id}
 
         try:
             response = requests.post(url, json=auth, headers=headers)
@@ -41,7 +45,7 @@ class Glow:
         data = response.json()
 
         if data["valid"]:
-            return data
+            self.token = data["token"]
         else:
             pprint(data)
             raise InvalidAuth
@@ -77,14 +81,11 @@ class Glow:
         return self.hardwareId
 
     async def connect_mqtt(self) -> None:
-        """Connect the internal MQTT client to the discovered CAD"""
+        """Connect the internal MQTT client to the discovered CAD."""
         HILDEBRAND_MQTT_HOST = (
-            "mqtts://USER:PASS@glowmqtt.energyhive.com/"
+            f"mqtts://{self.username}:{self.password}@glowmqtt.energyhive.com/"
         )
-        HILDEBRAND_MQTT_TOPIC = "SMART/HILD/{hardwareId}"
-
-        cad_hwId = self.hardwareId
-        topic = HILDEBRAND_MQTT_TOPIC.format(hardwareId=cad_hwId)
+        HILDEBRAND_MQTT_TOPIC = f"SMART/HILD/{self.hardwareId}"
 
         self.broker = MQTTClient()
 
@@ -92,7 +93,7 @@ class Glow:
 
         await self.broker.subscribe(
             [
-                (topic, QOS_1),
+                (HILDEBRAND_MQTT_TOPIC, QOS_1),
             ]
         )
 

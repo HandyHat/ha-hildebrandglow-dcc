@@ -6,8 +6,7 @@ from homeassistant.const import DEVICE_CLASS_POWER, POWER_WATT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity
 
-from .config_flow import config_object
-from .const import APP_ID, DOMAIN
+from .const import DOMAIN
 from .glow import Glow, InvalidAuth
 
 
@@ -17,8 +16,6 @@ async def async_setup_entry(
     """Set up the sensor platform."""
     new_entities = []
 
-
-
     for entry in hass.data[DOMAIN]:
         glow = hass.data[DOMAIN][entry]
 
@@ -27,13 +24,8 @@ async def async_setup_entry(
         try:
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         except InvalidAuth:
-            try:
-                await handle_failed_auth(config, hass)
-            except InvalidAuth:
-                return False
+            return False
 
-            glow = hass.data[DOMAIN][entry]
-            resources = await hass.async_add_executor_job(glow.retrieve_resources)
         for resource in resources:
             if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
                 sensor = GlowConsumptionCurrent(glow, resource)
