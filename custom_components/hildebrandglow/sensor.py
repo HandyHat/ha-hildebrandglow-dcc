@@ -8,7 +8,7 @@ from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
-from .mqttpayload import Meter
+from .mqttpayload import Meter, MQTTPayload
 
 
 async def async_setup_entry(
@@ -89,7 +89,7 @@ class GlowConsumptionCurrent(Entity):
         }
 
     @property
-    def state(self) -> Optional[str]:
+    def state(self) -> Optional[int]:
         """Return the state of the sensor."""
         if self._state:
             if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
@@ -97,10 +97,9 @@ class GlowConsumptionCurrent(Entity):
             elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
                 alt = self._state.alternative_historical_consumption
                 return alt.current_day_consumption_delivered
-        else:
-            return None
+        return None
 
-    def update_state(self, meter) -> None:
+    def update_state(self, meter: MQTTPayload) -> None:
         """Receive an MQTT update from Glow and update the internal state."""
         self._state = meter.electricity
         self.async_write_ha_state()
@@ -118,5 +117,5 @@ class GlowConsumptionCurrent(Entity):
                 return POWER_WATT
             elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
                 return VOLUME_CUBIC_METERS
-        else:
-            return None
+
+        return None

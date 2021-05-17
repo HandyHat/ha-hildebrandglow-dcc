@@ -1,4 +1,6 @@
 """Config flow for Hildebrand Glow integration."""
+from __future__ import annotations
+
 import logging
 from typing import Any, Dict
 
@@ -19,8 +21,6 @@ def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
         "name": glow["name"],
         "username": data["username"],
         "password": data["password"],
-        "token": glow["token"],
-        "token_exp": glow["exp"],
     }
 
 
@@ -29,12 +29,12 @@ async def validate_input(hass: core.HomeAssistant, data: dict) -> Dict[str, Any]
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
-    glow = await hass.async_add_executor_job(
-        Glow.authenticate, APP_ID, data["username"], data["password"]
-    )
+    glow = Glow(APP_ID, data["username"], data["password"])
+
+    auth_data: Dict[str, Any] = await hass.async_add_executor_job(glow.authenticate)
 
     # Return some info we want to store in the config entry.
-    return config_object(data, glow)
+    return config_object(data, auth_data)
 
 
 class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -44,7 +44,7 @@ class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.SOURCE_USER
 
     async def async_step_user(
-        self, user_input: Dict = None
+        self, user_input: dict[str, Any] | None = None
     ) -> data_entry_flow.FlowResult:
         """Handle the initial step."""
         errors = {}

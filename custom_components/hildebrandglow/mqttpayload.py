@@ -1,7 +1,7 @@
 """Helper classes for Zigbee Smart Energy Profile data."""
 import json
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class Meter:
@@ -17,19 +17,19 @@ class Meter:
             ARMED = "01"
             ON = "02"
 
-        current_summation_delivered: int
+        current_summation_delivered: Optional[int]
         """Import energy usage"""
 
-        current_summation_received: int
+        current_summation_received: Optional[int]
         """Export energy usage"""
 
-        current_max_demand_delivered: int
+        current_max_demand_delivered: Optional[int]
         """Maximum import energy usage rate"""
 
-        reading_snapshot_time: str
+        reading_snapshot_time: Optional[int]
         """Last time all of the reported attributed were updated"""
 
-        supply_status: SupplyStatus
+        supply_status: Optional[SupplyStatus]
         """Current state of the meter's supply."""
 
         def __init__(self, payload: Dict[str, Any]):
@@ -65,7 +65,7 @@ class Meter:
     class MeterStatus:
         """Information about the meter's error conditions."""
 
-        status: str
+        status: Optional[str]
         """Meter error conditions"""
 
         def __init__(self, payload: Dict[str, Any]):
@@ -89,31 +89,31 @@ class Meter:
             ELECTRIC = "00"
             GAS = "80"
 
-        unit_of_measure: UnitofMeasure
+        unit_of_measure: Optional[UnitofMeasure]
         """Unit for the measured value."""
 
-        multiplier: int
+        multiplier: Optional[int]
         """Multiplier value for smart meter readings."""
 
-        divisor: int
+        divisor: Optional[int]
         """Divisor value for smart meter readings."""
 
-        summation_formatting: str
+        summation_formatting: Optional[str]
         """Bitmap representing decimal places in Summation readings."""
 
-        demand_formatting: str
+        demand_formatting: Optional[str]
         """Bitmap representing decimal places in Demand readings."""
 
-        metering_device_type: MeteringDeviceType
+        metering_device_type: Optional[MeteringDeviceType]
         """Smart meter device type."""
 
-        siteID: str
+        siteID: Optional[str]
         """Electricicity MPAN / Gas MPRN."""
 
-        meter_serial_number: str
+        meter_serial_number: Optional[str]
         """Smart meter serial number."""
 
-        alternative_unit_of_measure: UnitofMeasure
+        alternative_unit_of_measure: Optional[UnitofMeasure]
         """Alternative unit for the measured value."""
 
         def __init__(self, payload: Dict[str, Any]):
@@ -139,16 +139,16 @@ class Meter:
     class HistoricalConsumption:
         """Information about the meter's historical readings."""
 
-        instantaneous_demand: int
+        instantaneous_demand: Optional[int]
         """Instantaneous import energy usage rate"""
 
-        current_day_consumption_delivered: int
+        current_day_consumption_delivered: Optional[int]
         """Import energy used in the current day."""
 
-        current_week_consumption_delivered: int
+        current_week_consumption_delivered: Optional[int]
         """Import energy used in the current week."""
 
-        current_month_consumption_delivered: int
+        current_month_consumption_delivered: Optional[int]
         """Import energy used in the current month."""
 
         def __init__(self, payload: Dict[str, Any]):
@@ -181,13 +181,13 @@ class Meter:
     class AlternativeHistoricalConsumption:
         """Information about the meter's altenative historical readings."""
 
-        current_day_consumption_delivered: int
+        current_day_consumption_delivered: Optional[int]
         """Import energy used in the current day."""
 
-        current_week_consumption_delivered: int
+        current_week_consumption_delivered: Optional[int]
         """Import energy used in the current week."""
 
-        current_month_consumption_delivered: int
+        current_month_consumption_delivered: Optional[int]
         """Import energy used in the current month."""
 
         def __init__(self, payload: Dict[str, Any]):
@@ -232,15 +232,15 @@ class Meter:
 class MQTTPayload:
     """Object representing a payload received over MQTT."""
 
-    electricity: Meter
+    electricity: Optional[Meter]
     """Data interpreted from an electricity meter."""
 
-    gas: Meter
+    gas: Optional[Meter]
     """Data interpreted from a gas meter."""
 
-    def __init__(self, payload: str):
+    def __init__(self, input: str):
         """Create internal Meter instances based off the unprocessed payload."""
-        payload = json.loads(payload)
+        payload: Dict[str, Any] = json.loads(input)
         self.electricity = (
             Meter(payload["elecMtr"]) if "03" in payload["elecMtr"]["0702"] else None
         )

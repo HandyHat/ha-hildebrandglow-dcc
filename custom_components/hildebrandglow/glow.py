@@ -45,7 +45,7 @@ class Glow:
 
         self.broker_active = False
 
-    def authenticate(self) -> None:
+    def authenticate(self) -> Dict[str, Any]:
         """Attempt to authenticate with Glowmarkt."""
         url = f"{self.BASE_URL}/auth"
         auth = {"username": self.username, "password": self.password}
@@ -60,6 +60,7 @@ class Glow:
 
         if data["valid"]:
             self.token = data["token"]
+            return data
         else:
             pprint(data)
             raise InvalidAuth
@@ -87,7 +88,7 @@ class Glow:
         devices = self.retrieve_devices()
 
         cad: Dict[str, Any] = next(
-            (dev for dev in devices if dev["deviceTypeId"] == ZIGBEE_GLOW_STICK), None
+            (dev for dev in devices if dev["deviceTypeId"] == ZIGBEE_GLOW_STICK), {}
         )
 
         self.hardwareId = cad["hardwareId"]
@@ -100,7 +101,9 @@ class Glow:
 
         self.broker.loop_start()
 
-    def _cb_on_connect(self, client, userdata, flags, rc):
+    def _cb_on_connect(
+        self, client: mqtt, userdata: Any, flags: Dict[str, Any], rc: int
+    ) -> None:
         """Receive a CONNACK message from the server."""
         client.subscribe(
             [
@@ -114,11 +117,13 @@ class Glow:
 
         self.broker_active = True
 
-    def _cb_on_disconnect(self, client, userdata, rc):
+    def _cb_on_disconnect(self, client: mqtt, userdata: Any, rc: int) -> None:
         """Receive notice the MQTT connection has disconnected."""
         self.broker_active = False
 
-    def _cb_on_message(self, client, userdata, msg):
+    def _cb_on_message(
+        self, client: mqtt, userdata: Any, msg: mqtt.MQTTMessage
+    ) -> None:
         """Receive a PUBLISH message from the server."""
         payload = MQTTPayload(msg.payload)
 
@@ -160,7 +165,9 @@ class Glow:
         data = response.json()
         return data
 
-    def register_sensor(self, sensor, resource):
+    def register_sensor(
+        self, sensor: GlowConsumptionCurrent, resource: Dict[str, Any]
+    ) -> None:
         """Register a live sensor for dispatching MQTT messages."""
         self.sensors[resource["classifier"]] = sensor
 
