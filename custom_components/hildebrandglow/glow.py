@@ -1,12 +1,11 @@
+"""Classes for interacting with the Glowmarkt API."""
 from __future__ import annotations
 
-"""Classes for interacting with the Glowmarkt API."""
 from pprint import pprint
 from typing import TYPE_CHECKING, Any, Dict, List
 
+import paho.mqtt.client as mqtt
 import requests
-from hbmqtt.client import MQTTClient
-from hbmqtt.mqtt.constants import QOS_1
 from homeassistant import exceptions
 
 from .mqttpayload import MQTTPayload
@@ -19,6 +18,8 @@ class Glow:
     """Bindings for the Hildebrand Glow Platform API."""
 
     BASE_URL = "https://api.glowmarkt.com/api/v0-1"
+    HILDEBRAND_MQTT_HOST = "glowmqtt.energyhive.com"
+    HILDEBRAND_MQTT_TOPIC = "SMART/HILD/{hardwareId}"
 
     username: str
     password: str
@@ -26,9 +27,9 @@ class Glow:
     token: str
 
     hardwareId: str
-    broker: MQTTClient
+    broker: mqtt
 
-    sensors: Dict[str, GlowConsumptionCurrent] = dict()
+    sensors: Dict[str, GlowConsumptionCurrent] = {}
 
     def __init__(self, app_id: str, username: str, password: str):
         """Create an authenticated Glow object."""
@@ -36,12 +37,15 @@ class Glow:
         self.username = username
         self.password = password
 
-    def authenticate(self) -> None:
-        """
-        Attempt to authenticate with Glowmarkt.
+        self.broker = mqtt.Client()
+        self.broker.username_pw_set(username=self.username, password=self.password)
+        self.broker.on_connect = self._cb_on_connect
+        self.broker.on_message = self._cb_on_message
 
-        Returns a time-limited access token.
-        """
+        self.broker_active = False
+
+    def authenticate(self) -> None:
+        """Attempt to authenticate with Glowmarkt."""
         url = f"{self.BASE_URL}/auth"
         auth = {"username": self.username, "password": self.password}
         headers = {"applicationId": self.app_id}
@@ -89,32 +93,30 @@ class Glow:
 
         return self.hardwareId
 
-    async def connect_mqtt(self) -> None:
+    def connect_mqtt(self) -> None:
         """Connect the internal MQTT client to the discovered CAD."""
-        HILDEBRAND_MQTT_HOST = (
-            f"mqtts://{self.username}:{self.password}@glowmqtt.energyhive.com/"
-        )
-        HILDEBRAND_MQTT_TOPIC = f"SMART/HILD/{self.hardwareId}"
+        self.broker.connect(self.HILDEBRAND_MQTT_HOST)
 
-        self.broker = MQTTClient()
+        self.broker.loop_start()
 
-        await self.broker.connect(HILDEBRAND_MQTT_HOST)
+    def _cb_on_connect(self, client, userdata, flags, rc):
+        """Receive a CONNACK message from the server."""
+        client.subscribe(self.HILDEBRAND_MQTT_TOPIC.format(hardwareId=self.hardwareId))
 
-        await self.broker.subscribe(
-            [
-                (HILDEBRAND_MQTT_TOPIC, QOS_1),
-            ]
-        )
+        self.broker_active = True
 
-    async def retrieve_mqtt(self) -> None:
-        while True:
-            message = await self.broker.deliver_message()
-            packet = message.publish_packet.payload.data.decode()
+    def _cb_on_disconnect(self, client, userdata, rc):
+        """Receive notice the MQTT connection has disconnected."""
+        self.broker_active = False
 
-            payload = MQTTPayload(packet)
+    def _cb_on_message(self, client, userdata, msg):
+        """Receive a PUBLISH message from the server."""
+        print(msg.topic + " " + str(msg.payload))
 
-            if "electricity.consumption" in self.sensors:
-                self.sensors["electricity.consumption"].update_state(payload)
+        payload = MQTTPayload(msg.payload)
+
+        if "electricity.consumption" in self.sensors:
+            self.sensors["electricity.consumption"].update_state(payload)
 
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
@@ -149,6 +151,7 @@ class Glow:
         return data
 
     def register_sensor(self, sensor, resource):
+        """Register a live sensor for dispatching MQTT messages."""
         self.sensors[resource["classifier"]] = sensor
 
 

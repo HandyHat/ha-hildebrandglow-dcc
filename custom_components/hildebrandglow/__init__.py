@@ -28,8 +28,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         await hass.async_add_executor_job(glow.authenticate)
         await hass.async_add_executor_job(glow.retrieve_cad_hardwareId)
-        await hass.async_create_task(glow.connect_mqtt())
-        hass.async_create_task(glow.retrieve_mqtt())
+        await hass.async_add_executor_job(glow.connect_mqtt)
+
+        while not glow.broker_active:
+            continue
 
     except InvalidAuth:
         return False
