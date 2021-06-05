@@ -19,8 +19,7 @@ class Glow:
 
     BASE_URL = "https://api.glowmarkt.com/api/v0-1"
     HILDEBRAND_MQTT_HOST = "glowmqtt.energyhive.com"
-    HILDEBRAND_MQTT_TOPIC = "SMART/HILD/{hardwareId}"
-    HILDEBRAND_MQTT_LEGACY = "SMART/DCAD/{hardwareId}"
+    HILDEBRAND_MQTT_TOPIC = "SMART/+/{hardwareId}"
 
     username: str
     password: str
@@ -106,13 +105,7 @@ class Glow:
     ) -> None:
         """Receive a CONNACK message from the server."""
         client.subscribe(
-            [
-                (self.HILDEBRAND_MQTT_TOPIC.format(hardwareId=self.hardwareId), 0),
-                (
-                    self.HILDEBRAND_MQTT_LEGACY.format(hardwareId=self.hardwareId),
-                    0,
-                ),
-            ]
+            [(self.HILDEBRAND_MQTT_TOPIC.format(hardwareId=self.hardwareId), 0)]
         )
 
         self.broker_active = True
