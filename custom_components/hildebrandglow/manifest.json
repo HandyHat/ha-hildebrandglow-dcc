@@ -8,5 +8,7 @@
   "zeroconf": [],
   "homekit": {},
   "dependencies": [],
-  "codeowners": ["@unlobito"]
+  "codeowners": ["@unlobito"],
+  "iot_class": "cloud_polling",
+  "version": "0.1.1"
 }
