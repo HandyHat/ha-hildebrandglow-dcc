@@ -83,11 +83,18 @@ class Glow:
     def retrieve_cad_hardwareId(self) -> str:
         """Locate the Consumer Access Device's hardware ID from the devices list."""
         ZIGBEE_GLOW_STICK = "1027b6e8-9bfd-4dcb-8068-c73f6413cfaf"
+        ZIGBEE_GLOW_DISPLAY_SMETS2 = "b91cf82f-aafe-47f4-930a-b2ed1c7b2691"
 
         devices = self.retrieve_devices()
 
         cad: Dict[str, Any] = next(
-            (dev for dev in devices if dev["deviceTypeId"] == ZIGBEE_GLOW_STICK), {}
+            (
+                dev
+                for dev in devices
+                if dev["deviceTypeId"]
+                in [ZIGBEE_GLOW_STICK, ZIGBEE_GLOW_DISPLAY_SMETS2]
+            ),
+            {},
         )
 
         self.hardwareId = cad["hardwareId"]
