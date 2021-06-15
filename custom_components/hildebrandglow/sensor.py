@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Optional
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import DEVICE_CLASS_POWER, POWER_WATT, VOLUME_CUBIC_METERS
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
@@ -76,7 +76,7 @@ class GlowConsumptionCurrent(Entity):
             return None
 
     @property
-    def device_info(self) -> Optional[Dict[str, Any]]:
+    def device_info(self) -> Optional[DeviceInfo]:
         """Return information about the sensor data source."""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
             human_type = "electricity"
