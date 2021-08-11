@@ -1,10 +1,17 @@
 """Platform for sensor integration."""
 from typing import Any, Callable, Dict, Optional
+from datetime import datetime, time
+import pytz
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import DEVICE_CLASS_POWER, POWER_WATT
+from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import (
+    DEVICE_CLASS_ENERGY,
+    STATE_CLASS_MEASUREMENT,
+    SensorEntity,
+)
 
 from .config_flow import config_object
 from .const import DOMAIN
@@ -57,7 +64,7 @@ async def async_setup_entry(
     return True
 
 
-class GlowConsumptionCurrent(Entity):
+class GlowConsumptionCurrent(SensorEntity):
     """Sensor object for the Glowmarkt resource's current consumption."""
 
     hass: HomeAssistant
@@ -65,6 +72,8 @@ class GlowConsumptionCurrent(Entity):
     knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
     available = True
+
+    _attr_state_class = STATE_CLASS_MEASUREMENT
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
@@ -115,16 +124,26 @@ class GlowConsumptionCurrent(Entity):
 
     @property
     def device_class(self) -> str:
-        """Return the device class (always DEVICE_CLASS_POWER)."""
-        return DEVICE_CLASS_POWER
+        """Return the device class (always DEVICE_CLASS_ENERGY)."""
+        return DEVICE_CLASS_ENERGY
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        if self._state is not None and self._state["units"] == "W":
-            return POWER_WATT
+        if self._state is not None and self._state["units"] == "kWh":
+            return ENERGY_KILO_WATT_HOUR
         else:
             return None
+    
+    @property
+    def last_reset(self):
+        "Returns midnight for current day"
+        tz = pytz.timezone("Europe/London")  # choose timezone
+        # Get correct date for the midnight using given timezone.
+        today = datetime.now(tz).date()
+        # Get midnight in the correct timezone (taking into account DST)
+        midnight = tz.localize(datetime.combine(today, time(0, 0)), is_dst=None)
+        return midnight
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.

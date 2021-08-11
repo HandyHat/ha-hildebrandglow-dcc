@@ -3,7 +3,7 @@
   "name": "Hildebrand Glow",
   "config_flow": true,
   "documentation": "https://github.com/HandyHat/ha-hildebrandglow",
-  "requirements": ["requests"],
+  "requirements": ["requests", "pytz"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
