@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 import requests
 from homeassistant import exceptions
+from datetime import datetime
 
 
 class Glow:
@@ -58,10 +59,18 @@ class Glow:
 
     def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
-        url = f"{self.BASE_URL}/resource/{resource}/current"
+
+        # Get today's date
+        current_time = datetime.now()
+        current_date = current_time.strftime("%Y-%m-%d")
+
+        catchup_url = f"{self.BASE_URL}/resource/{resource}/catchup"
+
+        url = f"{self.BASE_URL}/resource/{resource}/readings?from=" + current_date + "T00:00:00&to=" + current_date + "T23:59:59&period=P1D&offset=-60&function=sum"
         headers = {"applicationId": self.app_id, "token": self.token}
 
         try:
+            response = requests.get(catchup_url, headers=headers)
             response = requests.get(url, headers=headers)
         except requests.Timeout:
             raise CannotConnect
