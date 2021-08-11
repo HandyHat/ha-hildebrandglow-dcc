@@ -64,6 +64,7 @@ class Glow:
         current_time = datetime.now()
         current_date = current_time.strftime("%Y-%m-%d")
 
+        # Need to pull updated data from DCC first
         catchup_url = f"{self.BASE_URL}/resource/{resource}/catchup"
 
         url = f"{self.BASE_URL}/resource/{resource}/readings?from=" + current_date + "T00:00:00&to=" + current_date + "T23:59:59&period=P1D&offset=-60&function=sum"

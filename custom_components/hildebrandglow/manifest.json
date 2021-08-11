@@ -1,14 +1,15 @@
 {
-  "domain": "hildebrandglow",
+  "domain": "hildebrandglow-dcc",
   "name": "Hildebrand Glow",
   "config_flow": true,
-  "documentation": "https://github.com/unlobito/ha-hildebrandglow",
+  "documentation": "https://github.com/HandyHat/ha-hildebrandglow",
   "requirements": ["requests"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
   "dependencies": [],
-  "codeowners": [
-    "@unlobito"
-  ]
+  "codeowners": ["@handyhat"],
+  "iot_class": "cloud_polling",
+  "version": "0.2"
+
 }
