@@ -5,11 +5,13 @@ Before using this integration, you'll need to have an active Glow account (usabl
 
 This integration will currently emit one sensor for the current usage of each detected smart meter.
 
+This integration works without requiring a consumer device provided by Hildebrand Glow themselves and can work with your existing smart meter if you have an active Glow account and can see your metered data in their Bright app.
+
 ## Installation
 ### Automated installation through HACS
 You can install this component through [HACS](https://hacs.xyz/) and receive automatic updates.
 
-After installing HACS, visit the HACS _Settings_ pane and add `https://github.com/unlobito/ha-hildebrandglow` as an `Integration`. You'll then be able to install it through the _Integrations_ pane.
+After installing HACS, visit the HACS _Settings_ pane and add `https://github.com/HandyHat/ha-hildebrandglow` as an `Integration`. You'll then be able to install it through the _Integrations_ pane.
 
 ### Manual installation
 Copy the `custom_components/hildebrandglow/` directory and all of its files to your ` config/custom_components` directory. You'll then need to restart Home Assistant for it to detect the new integration.
