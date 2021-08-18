@@ -5,19 +5,18 @@ from typing import Any, Dict
 import voluptuous as vol
 from homeassistant import config_entries, core, data_entry_flow
 
-from .const import DOMAIN  # pylint:disable=unused-import
+from .const import APP_ID, DOMAIN  # pylint:disable=unused-import
 from .glow import CannotConnect, Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({"app_id": str, "username": str, "password": str})
+DATA_SCHEMA = vol.Schema({"username": str, "password": str})
 
 
 def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
     """Prepare a ConfigEntity with authentication data and a temporary token."""
     return {
         "name": glow["name"],
-        "app_id": data["app_id"],
         "username": data["username"],
         "password": data["password"],
         "token": glow["token"],
@@ -31,7 +30,7 @@ async def validate_input(hass: core.HomeAssistant, data: dict) -> Dict[str, Any]
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     glow = await hass.async_add_executor_job(
-        Glow.authenticate, data["app_id"], data["username"], data["password"]
+        Glow.authenticate, APP_ID, data["username"], data["password"]
     )
 
     # Return some info we want to store in the config entry.

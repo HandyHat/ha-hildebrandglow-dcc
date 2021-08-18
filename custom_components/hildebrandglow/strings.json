@@ -5,7 +5,6 @@
       "user": {
         "title": "Hildebrand Glow API access",
         "data": {
-          "app_id": "Application ID",
           "username": "Username",
           "password": "Password"
         }
