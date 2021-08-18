@@ -5,6 +5,11 @@ from typing import Any, Dict, List
 import requests
 from homeassistant import exceptions
 from datetime import datetime
+from .__init__ import handle_failed_auth
+import logging
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Glow:
@@ -77,7 +82,13 @@ class Glow:
             raise CannotConnect
 
         if response.status_code != 200:
-            raise InvalidAuth
+            if response.json()["error"] == "incorrect elements -from in the future":
+                return
+            elif response.status_code == 401:
+                raise InvalidAuth
+            else:
+                _LOGGER.error("Response Status Code:" + str(response.status_code))
+                self.available = False
 
         data = response.json()
         return data

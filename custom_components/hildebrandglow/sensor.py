@@ -16,6 +16,8 @@ from homeassistant.components.sensor import (
 from .config_flow import config_object
 from .const import APP_ID, DOMAIN
 from .glow import Glow, InvalidAuth
+from .__init__ import handle_failed_auth
+
 
 
 async def async_setup_entry(
@@ -130,7 +132,7 @@ class GlowConsumptionCurrent(SensorEntity):
         midnight = tz.localize(datetime.combine(today, time(0, 0)), is_dst=None)
         return midnight
 
-    async def async_update(self) -> None:
+    async def async_update(self, hass: HomeAssistant, config: ConfigEntry) -> None:
         """Fetch new state data for the sensor.
 
         This is the only method that should fetch new data for Home Assistant.
@@ -140,6 +142,5 @@ class GlowConsumptionCurrent(SensorEntity):
                 self.glow.current_usage, self.resource["resourceId"]
             )
         except InvalidAuth:
-            # TODO: Trip the failed auth logic above somehow
-            self.available = False
+            handle_failed_auth(config, hass)
             pass

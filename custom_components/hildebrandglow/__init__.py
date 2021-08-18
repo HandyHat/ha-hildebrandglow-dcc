@@ -36,7 +36,7 @@ async def handle_failed_auth(config: ConfigEntry, hass: HomeAssistant) -> None:
     hass.config_entries.async_update_entry(entry=config, data=new_config)
 
     glow = Glow(APP_ID, glow_auth["token"])
-    hass.data[DOMAIN][config.entry_id] = glows
+    hass.data[DOMAIN][config.entry_id] = glow
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hildebrand Glow from a config entry."""
