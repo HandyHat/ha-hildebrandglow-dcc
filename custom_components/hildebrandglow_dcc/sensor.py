@@ -79,10 +79,9 @@ class GlowConsumptionCurrent(SensorEntity):
         """Icon to use in the frontend, if any."""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
             return "mdi:flash"
-        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
             return "mdi:fire"
-        else:
-            return None
+        return None
 
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
@@ -102,8 +101,7 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the state of the sensor."""
         if self._state:
             return self._state["data"][0][1]
-        else:
-            return None
+        return None
 
     @property
     def device_class(self) -> str:
@@ -115,8 +113,7 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the unit of measurement."""
         if self._state is not None and self._state["units"] == "kWh":
             return ENERGY_KILO_WATT_HOUR
-        else:
-            return None
+        return None
 
     @property
     def last_reset(self):
@@ -139,4 +136,3 @@ class GlowConsumptionCurrent(SensorEntity):
             )
         except InvalidAuth:
             Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
-            pass
