@@ -1,45 +1,35 @@
-# ha-hildebrandglow
-HomeAssistant integration for the [Hildebrand Glow](https://www.hildebrand.co.uk/our-products/) smart meter HAN for UK SMETS meters.
+# Hildebrand Glow (DCC) Integration
 
-Before using this integration, you'll need to have an active Glow account (usable through the Bright app) and API access enabled. If you haven't been given an API Application ID by Hildebrand, you'll need to contact them and request API access be enabled for your account.
+Home Assistant integration for energy consumption data from UK SMETS (Smart) meters using the Hildebrand Glow API.
 
-This integration will currently emit one sensor for the current usage of each detected smart meter.
+This integration works without requiring a consumer device provided by Hildebrand Glow and can work with your existing smart meter. You'll need to set up your smart meter for free in the Bright app on [Android](https://play.google.com/store/apps/details?id=uk.co.hildebrand.brightionic&hl=en_GB) or [iOS](https://apps.apple.com/gb/app/bright/id1369989022). This will only work when using the Data Communications Company (DCC) backend, which all SMETS 2 meters and some SMETS 1 meters do ([more information](https://www.smartme.co.uk/technical.html)). Once you can see your data in the app, you are good to go.
 
-This integration works without requiring a consumer device provided by Hildebrand Glow themselves and can work with your existing smart meter if you have an active Glow account and can see your metered data in their Bright app.
+If you are using [Hildebrand Glow hardware](https://shop.glowmarkt.com/), you should use the MQTT version [here](https://github.com/unlobito/ha-hildebrandglow/tree/mqtt) to get current consumption data.
+
+This integration will currently emit one sensor for the daily usage of each detected smart meter.
 
 ## Installation
+
 ### Automated installation through HACS
+
 You can install this component through [HACS](https://hacs.xyz/) and receive automatic updates.
 
-After installing HACS, visit the HACS _Settings_ pane and add `https://github.com/HandyHat/ha-hildebrandglow` as an `Integration`. You'll then be able to install it through the _Integrations_ pane.
+After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/HandyHat/ha-hildebrandglow` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
 
 ### Manual installation
-Copy the `custom_components/hildebrandglow/` directory and all of its files to your ` config/custom_components` directory. You'll then need to restart Home Assistant for it to detect the new integration.
+
+Copy the `custom_components/hildebrandglow_dcc/` directory and all of its files to your `config/custom_components` directory. You'll then need to restart Home Assistant for it to detect the new integration.
 
 ## Configuration
-Visit the _Integrations_ section within Home Assistant's _Configuration_ panel and click the _Add_ button in the bottom right corner. After searching for "Hildebrand Glow", you'll be asked for your application ID and Glow credentials.
+
+Visit the _Integrations_ section within Home Assistant's _Configuration_ panel and click the _Add_ button in the bottom right corner. After searching for "Hildebrand Glow", you'll be asked for your  Glow credentials.
 
 Once you've authenticated, the integration will automatically set up a sensor for each of the smart meters on your account.
 
 ## Development
-GNU Make is used to assist with common tasks during development. The following
-is a list of all supported commands on the Makefile.
 
-```
-$ make
-Usage: make [command]
-
-  install-dev    Install dependencies required for development via pip
-  format         Run linters on the codebase and attempt to fix any issues found
-  lint           Dry-run linters on the codebase without making any changes
-```
+Run `pip install -r requirements-dev.txt` to install the development requirements.
 
 ### Code Style
-This project makes use of black, flake8, isort, and mypy to automatically enforce
-a consistent code style across the codebase. 
 
-`make format` should be run before committing to automatically format the
-codebase.
-
-`make lint` is used by Continuous Integration to validate the codebase's
-formatting without making any changes to it.
+This project makes use of isort, pylint and autopep8 to enforce a consistent code style across the codebase.
