@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional
 import pytz
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
-    STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -58,7 +58,7 @@ class GlowConsumptionCurrent(SensorEntity):
 
     available = True
 
-    _attr_state_class = STATE_CLASS_MEASUREMENT
+    _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
