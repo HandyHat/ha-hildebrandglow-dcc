@@ -4,11 +4,6 @@
   "config_flow": true,
   "documentation": "https://github.com/HandyHat/ha-hildebrandglow",
   "issue_tracker": "https://github.com/HandyHat/ha-hildebrandglow/issues",
-  "requirements": ["pytz"],
-  "ssdp": [],
-  "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
   "codeowners": ["@handyhat"],
   "iot_class": "cloud_polling",
   "version": "0.2"

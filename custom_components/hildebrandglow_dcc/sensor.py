@@ -120,16 +120,6 @@ class GlowConsumptionCurrent(SensorEntity):
             return ENERGY_KILO_WATT_HOUR
         return None
 
-    @property
-    def last_reset(self):
-        "Returns midnight for current day"
-        tz = pytz.timezone("Europe/London")  # choose timezone
-        # Get correct date for the midnight using given timezone.
-        today = datetime.now(tz).date()
-        # Get midnight in the correct timezone (taking into account DST)
-        midnight = tz.localize(datetime.combine(today, time(0, 0)), is_dst=None)
-        return midnight
-
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
 
