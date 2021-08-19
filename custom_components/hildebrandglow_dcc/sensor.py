@@ -1,5 +1,5 @@
 """Platform for sensor integration."""
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any, Callable, Dict, Optional
 
 import pytz
@@ -14,6 +14,8 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
+
+SCAN_INTERVAL = timedelta(minutes=2)
 
 
 async def async_setup_entry(
@@ -72,7 +74,10 @@ class GlowConsumptionCurrent(SensorEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        return self.resource["label"]
+        if self.resource["classifier"] == "gas.consumption":
+            return "Gas Consumption (Today)"
+        if self.resource["classifier"] == "electricity.consumption":
+            return "Electric Consumption (Today)"
 
     @property
     def icon(self) -> Optional[str]:
@@ -87,13 +92,13 @@ class GlowConsumptionCurrent(SensorEntity):
     def device_info(self) -> Optional[Dict[str, Any]]:
         """Return information about the sensor data source."""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            human_type = "electricity"
+            human_type = "Electricity"
         elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-            human_type = "gas"
+            human_type = "Gas"
 
         return {
             "identifiers": {(DOMAIN, self.resource["resourceId"])},
-            "name": f"Smart Meter, {human_type}",
+            "name": f"Smart {human_type} Meter",
         }
 
     @property
