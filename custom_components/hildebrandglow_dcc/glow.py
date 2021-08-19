@@ -82,7 +82,6 @@ class Glow:
 
     def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
-
         # Get today's date
         current_time = datetime.now()
         current_date = current_time.strftime("%Y-%m-%d")
