@@ -17,6 +17,7 @@ from .glow import Glow, InvalidAuth
 
 SCAN_INTERVAL = timedelta(minutes=2)
 
+
 async def async_setup_entry(
     hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable
 ) -> bool:
