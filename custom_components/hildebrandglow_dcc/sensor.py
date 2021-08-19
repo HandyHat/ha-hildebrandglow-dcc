@@ -1,5 +1,5 @@
 """Platform for sensor integration."""
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any, Callable, Dict, Optional
 
 import pytz
@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
 
+SCAN_INTERVAL = timedelta(minutes=2)
 
 async def async_setup_entry(
     hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable
