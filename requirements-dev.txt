@@ -1,4 +1,4 @@
-black==21.4b0
-flake8==3.9.1
+autopep8==1.5.7
+homeassistant==2021.8.8
 isort==5.8.0
-mypy==0.812
+pylint==2.9.6

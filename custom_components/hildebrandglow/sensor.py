@@ -1,23 +1,19 @@
 """Platform for sensor integration."""
-from typing import Any, Callable, Dict, Optional
 from datetime import datetime, time
-import pytz
+from typing import Any, Callable, Dict, Optional
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
+import pytz
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
     STATE_CLASS_MEASUREMENT,
     SensorEntity,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.core import HomeAssistant
 
-from .config_flow import config_object
-from .const import APP_ID, DOMAIN
+from .const import DOMAIN
 from .glow import Glow, InvalidAuth
-from .__init__ import handle_failed_auth
-
 
 
 async def async_setup_entry(
@@ -35,7 +31,7 @@ async def async_setup_entry(
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         except InvalidAuth:
             try:
-                await handle_failed_auth(config, hass)
+                await Glow.handle_failed_auth(config, hass)
             except InvalidAuth:
                 return False
 
@@ -121,7 +117,7 @@ class GlowConsumptionCurrent(SensorEntity):
             return ENERGY_KILO_WATT_HOUR
         else:
             return None
-    
+
     @property
     def last_reset(self):
         "Returns midnight for current day"
@@ -132,7 +128,7 @@ class GlowConsumptionCurrent(SensorEntity):
         midnight = tz.localize(datetime.combine(today, time(0, 0)), is_dst=None)
         return midnight
 
-    async def async_update(self, hass: HomeAssistant, config: ConfigEntry) -> None:
+    async def async_update(self) -> None:
         """Fetch new state data for the sensor.
 
         This is the only method that should fetch new data for Home Assistant.
@@ -142,5 +138,5 @@ class GlowConsumptionCurrent(SensorEntity):
                 self.glow.current_usage, self.resource["resourceId"]
             )
         except InvalidAuth:
-            handle_failed_auth(config, hass)
+            Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
             pass

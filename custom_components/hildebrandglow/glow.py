@@ -1,13 +1,15 @@
 """Classes for interacting with the Glowmarkt API."""
+import logging
+from datetime import datetime
 from pprint import pprint
 from typing import Any, Dict, List
 
 import requests
 from homeassistant import exceptions
-from datetime import datetime
-from .__init__ import handle_failed_auth
-import logging
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
+from .const import APP_ID, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +48,23 @@ class Glow:
             pprint(data)
             raise InvalidAuth
 
+    async def handle_failed_auth(self, config: ConfigEntry, hass: HomeAssistant) -> None:
+        """Attempt to refresh the current Glow token."""
+        glow_auth = await hass.async_add_executor_job(
+            Glow.authenticate,
+            APP_ID,
+            config.data["username"],
+            config.data["password"],
+        )
+        from .config_flow import config_object
+
+        current_config = dict(config.data.copy())
+        new_config = config_object(current_config, glow_auth)
+        hass.config_entries.async_update_entry(entry=config, data=new_config)
+
+        glow = Glow(APP_ID, glow_auth["token"])
+        hass.data[DOMAIN][config.entry_id] = glow
+
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
         url = f"{self.BASE_URL}/resource"
@@ -83,6 +102,7 @@ class Glow:
 
         if response.status_code != 200:
             if response.json()["error"] == "incorrect elements -from in the future":
+                _LOGGER.info("Attempted to load data from the future - expected if the day has just changed")
                 return
             elif response.status_code == 401:
                 raise InvalidAuth
