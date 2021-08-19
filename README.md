@@ -1,5 +1,3 @@
-# This fork has been moved to https://github.com/HandyHat/ha-hildebrandglow-dcc
-
 # Hildebrand Glow (DCC) Integration
 
 Home Assistant integration for energy consumption data from UK SMETS (Smart) meters using the Hildebrand Glow API.
