@@ -1,6 +1,6 @@
 {
-  "domain": "hildebrandglow-dcc",
-  "name": "Hildebrand Glow",
+  "domain": "hildebrandglow_dcc",
+  "name": "Hildebrand Glow (DCC)",
   "config_flow": true,
   "documentation": "https://github.com/HandyHat/ha-hildebrandglow",
   "requirements": ["requests", "pytz"],
