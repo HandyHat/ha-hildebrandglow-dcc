@@ -1,5 +1,9 @@
 # Hildebrand Glow (DCC) Integration
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
+![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/HandyHat/ha-hildebrandglow-dcc?style=for-the-badge)
+[![DeepSource](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc.svg/?label=active+issues&show_trend=true&token=gYN6CNb5ApHN5Pry_U-FFSYK)](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc/?ref=repository-badge)
+
 Home Assistant integration for energy consumption data from UK SMETS (Smart) meters using the Hildebrand Glow API.
 
 This integration works without requiring a consumer device provided by Hildebrand Glow and can work with your existing smart meter. You'll need to set up your smart meter for free in the Bright app on [Android](https://play.google.com/store/apps/details?id=uk.co.hildebrand.brightionic&hl=en_GB) or [iOS](https://apps.apple.com/gb/app/bright/id1369989022). This will only work when using the Data Communications Company (DCC) backend, which all SMETS 2 meters and some SMETS 1 meters do ([more information](https://www.smartme.co.uk/technical.html)). Once you can see your data in the app, you are good to go.
@@ -33,3 +37,7 @@ Run `pip install -r requirements-dev.txt` to install the development requirement
 ### Code Style
 
 This project makes use of isort, pylint and autopep8 to enforce a consistent code style across the codebase.
+
+## Credits
+
+Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked, and to [this python library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library) for helping me troubleshoot.
