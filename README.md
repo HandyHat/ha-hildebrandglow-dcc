@@ -30,6 +30,17 @@ Visit the _Integrations_ section within Home Assistant's _Configuration_ panel a
 
 Once you've authenticated, the integration will automatically set up a sensor for each of the smart meters on your account.
 
+## Debugging
+
+To debug the integration, add the following to your `configuration.yaml`
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.hildebrandglow_dcc: debug
+```
+
 ## Development
 
 To begin, it is recommended to create a virtual environment to install dependencies:
