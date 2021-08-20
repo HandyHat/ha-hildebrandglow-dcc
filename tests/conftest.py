@@ -1,6 +1,6 @@
 """Global fixtures for integration_blueprint integration."""
 # Fixtures allow you to replace functions with a Mock object. You can perform
-# many options via the Mock to reflect a particular behavior from the original
+# many options via the Mock to reflect a particular behaviour from the original
 # function that you want to see without going through the function's actual logic.
 # Fixtures can either be passed into tests as parameters, or if autouse=True, they
 # will automatically be used across all tests.

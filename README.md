@@ -32,7 +32,17 @@ Once you've authenticated, the integration will automatically set up a sensor fo
 
 ## Development
 
-Run `pip install -r requirements-dev.txt` to install the development requirements.
+To begin, it is recommended to create a virtual environment to install dependencies:
+
+```bash
+python -m venv dev-venv
+. dev-venv\Scripts\activate
+```
+
+You can then install the dependencies that will allow you to run tests:
+`pip3 install -r requirements-dev.txt`
+
+This will install `homeassistant`, `autopep8`, `isort` and `pylint`, a plugin which allows you to leverage helpers that are available in Home Assistant for core integration tests.
 
 ### Code Style
 
