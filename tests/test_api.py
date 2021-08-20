@@ -11,7 +11,8 @@ async def test_api(hass, aioclient_mock, caplog):
     """Test API calls."""
 
     # To test the api submodule, we first create an instance of our API client
-    api = IntegrationBlueprintApiClient("test", "test", async_get_clientsession(hass))
+    api = IntegrationBlueprintApiClient(
+        "test", "test", async_get_clientsession(hass))
 
     # Use aioclient_mock which is provided by `pytest_homeassistant_custom_components`
     # to mock responses to aiohttp requests. In this case we are telling the mock to
@@ -64,7 +65,8 @@ async def test_api(hass, aioclient_mock, caplog):
     )
 
     caplog.clear()
-    aioclient_mock.post("https://jsonplaceholder.typicode.com/posts/2", exc=Exception)
+    aioclient_mock.post(
+        "https://jsonplaceholder.typicode.com/posts/2", exc=Exception)
     assert (
         await api.api_wrapper("post", "https://jsonplaceholder.typicode.com/posts/2")
         is None
@@ -75,7 +77,8 @@ async def test_api(hass, aioclient_mock, caplog):
     )
 
     caplog.clear()
-    aioclient_mock.post("https://jsonplaceholder.typicode.com/posts/3", exc=TypeError)
+    aioclient_mock.post(
+        "https://jsonplaceholder.typicode.com/posts/3", exc=TypeError)
     assert (
         await api.api_wrapper("post", "https://jsonplaceholder.typicode.com/posts/3")
         is None
