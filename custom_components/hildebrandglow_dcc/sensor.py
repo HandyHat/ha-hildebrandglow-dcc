@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional
 import pytz
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
-    STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -58,7 +58,7 @@ class GlowConsumptionCurrent(SensorEntity):
 
     available = True
 
-    _attr_state_class = STATE_CLASS_MEASUREMENT
+    _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
     def __init__(self, glow: Glow, resource: Dict[str, Any]):
         """Initialize the sensor."""
@@ -119,16 +119,6 @@ class GlowConsumptionCurrent(SensorEntity):
         if self._state is not None and self._state["units"] == "kWh":
             return ENERGY_KILO_WATT_HOUR
         return None
-
-    @property
-    def last_reset(self):
-        "Returns midnight for current day"
-        tz = pytz.timezone("Europe/London")  # choose timezone
-        # Get correct date for the midnight using given timezone.
-        today = datetime.now(tz).date()
-        # Get midnight in the correct timezone (taking into account DST)
-        midnight = tz.localize(datetime.combine(today, time(0, 0)), is_dst=None)
-        return midnight
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
