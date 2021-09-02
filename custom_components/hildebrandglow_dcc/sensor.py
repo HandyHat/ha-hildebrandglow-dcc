@@ -5,11 +5,15 @@ from typing import Any, Callable, Dict, Optional
 import pytz
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_GAS,
     STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.const import (
+    ENERGY_KILO_WATT_HOUR,
+    VOLUME_CUBIC_METERS
+)
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
@@ -110,14 +114,18 @@ class GlowConsumptionCurrent(SensorEntity):
 
     @property
     def device_class(self) -> str:
-        """Return the device class (always DEVICE_CLASS_ENERGY)."""
-        return DEVICE_CLASS_ENERGY
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+            return DEVICE_CLASS_ENERGY
+        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+            return DEVICE_CLASS_GAS
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        if self._state is not None and self._state["units"] == "kWh":
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
             return ENERGY_KILO_WATT_HOUR
+        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+            return VOLUME_CUBIC_METERS
         return None
 
     async def async_update(self) -> None:
