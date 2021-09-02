@@ -79,9 +79,9 @@ class GlowConsumptionCurrent(SensorEntity):
     def name(self) -> str:
         """Return the name of the sensor."""
         if self.resource["classifier"] == "gas.consumption":
-            return "Gas Consumption (Today)"
+            return "Gas Consumption (m3)"
         if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Consumption (Today)"
+            return "Electric Consumption (kWh)"
 
     @property
     def icon(self) -> Optional[str]:
@@ -109,7 +109,10 @@ class GlowConsumptionCurrent(SensorEntity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            return self._state["data"][0][1]
+            if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+                return self._state["data"][0][1]
+            elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+                return float(self._state["data"][0][1])/10.55
         return None
 
     @property
@@ -133,17 +136,9 @@ class GlowConsumptionCurrent(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            try:
-                self._state = await self.hass.async_add_executor_job(
-                    self.glow.current_usage, self.resource["resourceId"]
-                )
-            except InvalidAuth:
-                Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
-        else:
-            try:
-                self.state = await self.hass.async_add_executor_job(
-                    float(self.glow.current_usage)/10.55, self.resource["resourceId"]
-                )
-            except InvalidAuth:
-                Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
+        try:
+            self._state = await self.hass.async_add_executor_job(
+                self.glow.current_usage, self.resource["resourceId"]
+            )
+        except InvalidAuth:
+            Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
