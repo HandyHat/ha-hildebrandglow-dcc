@@ -142,9 +142,8 @@ class GlowConsumptionCurrent(SensorEntity):
                 Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
         else:
             try:
-                amount = float(self.glow.current_usage) / 10.55
                 self.state = await self.hass.async_add_executor_job(
-                    amount, self.resource["resourceId"]
+                    float(self.glow.current_usage)/10.55, self.resource["resourceId"]
                 )
             except InvalidAuth:
                 Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
