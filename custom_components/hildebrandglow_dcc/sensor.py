@@ -133,9 +133,18 @@ class GlowConsumptionCurrent(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        try:
-            self._state = await self.hass.async_add_executor_job(
-                self.glow.current_usage, self.resource["resourceId"]
-            )
-        except InvalidAuth:
-            Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+            try:
+                self._state = await self.hass.async_add_executor_job(
+                    self.glow.current_usage, self.resource["resourceId"]
+                )
+            except InvalidAuth:
+                Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
+        else:
+            try:
+                amount = float(self.glow.current_usage) / 10.55
+                self.state = await self.hass.async_add_executor_job(
+                    amount, self.resource["resourceId"]
+                )
+            except InvalidAuth:
+                Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
