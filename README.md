@@ -14,7 +14,7 @@ This integration will currently emit one sensor for the daily usage of each dete
 
 You can install this component through [HACS](https://hacs.xyz/) and receive automatic updates.
 
-After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
+After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/jake-armour/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
 
 ### Manual installation
 
