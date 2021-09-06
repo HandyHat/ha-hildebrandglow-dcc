@@ -111,7 +111,7 @@ class GlowConsumptionCurrent(SensorEntity):
         if self._state:
             if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
                 return self._state["data"][0][1]
-            elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+            if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
                 return float(self._state["data"][0][1]) * 3.6 / 40 / 1.02264
             return None
         return None
@@ -120,7 +120,7 @@ class GlowConsumptionCurrent(SensorEntity):
     def device_class(self) -> Optional[str]:
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
             return DEVICE_CLASS_ENERGY
-        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
             return DEVICE_CLASS_GAS
         return None
 
@@ -129,7 +129,7 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the unit of measurement."""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
             return ENERGY_KILO_WATT_HOUR
-        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
             return VOLUME_CUBIC_METERS
         return None
 
