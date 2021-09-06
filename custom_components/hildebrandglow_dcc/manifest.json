@@ -1,10 +1,10 @@
 {
-  "domain": "hildebrandglow_gas",
-  "name": "Hildebrand Glow (Plus Gas)",
+  "domain": "hildebrandglow_dcc",
+  "name": "Hildebrand Glow (DCC)",
   "config_flow": true,
-  "documentation": "https://github.com/jake-armour/ha-hildebrandglow",
-  "issue_tracker": "https://github.com/jake-armour/ha-hildebrandglow/issues",
-  "codeowners": ["@jake-armour"],
+  "documentation": "https://github.com/HandyHat/ha-hildebrandglow",
+  "issue_tracker": "https://github.com/HandyHat/ha-hildebrandglow/issues",
+  "codeowners": ["@HandyHat"],
   "iot_class": "cloud_polling",
-  "version": "0.4.5"
+  "version": "0.4.0"
 }
