@@ -112,7 +112,7 @@ class GlowConsumptionCurrent(SensorEntity):
             if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
                 return self._state["data"][0][1]
             elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-                return float(self._state["data"][0][1])/10.55
+                return float(self._state["data"][0][1]) * 3.6 / 40 / 1.02264 
         return None
 
     @property
