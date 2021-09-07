@@ -1,4 +1,9 @@
-# Hildebrand Glow (DCC) Integration (with gas as cubic meters)
+# Hildebrand Glow (DCC) Integration
+
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
+[![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/HandyHat/ha-hildebrandglow-dcc?style=for-the-badge)](https://www.codefactor.io/repository/github/handyhat/ha-hildebrandglow-dcc)
+[![DeepSource](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc.svg/?label=active+issues&show_trend=true&token=gYN6CNb5ApHN5Pry_U-FFSYK)](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc/?ref=repository-badge)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/HandyHat)
 
 Home Assistant integration for energy consumption data from UK SMETS (Smart) meters using the Hildebrand Glow API.
 
@@ -14,7 +19,7 @@ This integration will currently emit one sensor for the daily usage of each dete
 
 You can install this component through [HACS](https://hacs.xyz/) and receive automatic updates.
 
-After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/jake-armour/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
+After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
 
 ### Manual installation
 
@@ -34,7 +39,7 @@ To debug the integration, add the following to your `configuration.yaml`
 logger:
   default: warning
   logs:
-    custom_components.hildebrandglow_gas: debug
+    custom_components.hildebrandglow_dcc: debug
 ```
 
 ## Development
@@ -57,4 +62,4 @@ This project makes use of isort, pylint and autopep8 to enforce a consistent cod
 
 ## Credits
 
-This prject is a fork of [HandyHat's repository](https://github.com/HandyHat/ha-hildebrandglow) which is a fork of the [original project](https://github.com/unlobito/ha-hildebrandglow).
+Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked, and to [this python library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library) for helping me troubleshoot.
