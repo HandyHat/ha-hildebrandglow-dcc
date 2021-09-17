@@ -6,6 +6,7 @@ import pytz
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
     STATE_CLASS_TOTAL_INCREASING,
+    DEVICE_CLASS_MONETARY,
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -54,7 +55,12 @@ class GlowConsumptionCurrent(SensorEntity):
 
     hass: HomeAssistant
 
-    knownClassifiers = ["gas.consumption", "electricity.consumption"]
+    knownClassifiers = [
+        "gas.consumption",
+        "electricity.consumption",
+        "gas.consumption.cost",
+        "electricity.consumption.cost",
+    ]
 
     available = True
 
@@ -78,15 +84,22 @@ class GlowConsumptionCurrent(SensorEntity):
             return "Gas Consumption (Today)"
         if self.resource["classifier"] == "electricity.consumption":
             return "Electric Consumption (Today)"
+        if self.resource["classifier"] == "electricity.consumption.cost":
+            return "Electric Cost (Today)"
+        if self.resource["classifier"] == "gas.consumption.cost":
+            return "Gas Cost (Today)"
 
     @property
     def icon(self) -> Optional[str]:
         """Icon to use in the frontend, if any."""
+        icon = ""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            return "mdi:flash"
+            icon = "mdi:flash"
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-            return "mdi:fire"
-        return None
+            icon = "mdi:fire"
+        if self.resource["baseUnit"] == "pence":
+            icon = "mdi:cash"
+        return icon
 
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
@@ -102,22 +115,30 @@ class GlowConsumptionCurrent(SensorEntity):
         }
 
     @property
-    def state(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        if self._state:
-            return self._state["data"][0][1]
+    def device_class(self) -> str:
+        """Return the device class."""
+        if self._state is not None and self._state["units"] == "kWh":
+            return DEVICE_CLASS_ENERGY
+        if self._state is not None and self._state["units"] == "pence":
+            return DEVICE_CLASS_MONETARY
         return None
 
     @property
-    def device_class(self) -> str:
-        """Return the device class (always DEVICE_CLASS_ENERGY)."""
-        return DEVICE_CLASS_ENERGY
+    def state(self) -> Optional[str]:
+        """Return the state of the sensor."""
+        if self._state:
+            if self._state["units"] == "pence":
+                """Convert pence to GBP"""
+                return self._state["data"][0][1] / 100.0
+            return self._state["data"][0][1]
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
         if self._state is not None and self._state["units"] == "kWh":
             return ENERGY_KILO_WATT_HOUR
+        if self._state is not None and self._state["units"] == "pence":
+            return "GBP"
         return None
 
     async def async_update(self) -> None:
