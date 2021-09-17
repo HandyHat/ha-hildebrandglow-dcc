@@ -128,7 +128,6 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the state of the sensor."""
         if self._state:
             if self._state["units"] == "pence":
-                """Convert pence to GBP"""
                 return self._state["data"][0][1] / 100.0
             return self._state["data"][0][1]
 
