@@ -58,7 +58,7 @@ async def async_setup_entry(
 
 
 class M3Sensor(SensorEntity):
-
+"""Sensor object for the Glowmarkt resource's gas consumption in m3 units"""
     hass: HomeAssistant
 
     """Representation of a Sensor."""
