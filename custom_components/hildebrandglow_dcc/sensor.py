@@ -39,6 +39,7 @@ async def async_setup_entry(
         except InvalidAuth:
             try:
                 await Glow.handle_failed_auth(config, hass)
+
             except InvalidAuth:
                 return False
 

@@ -47,7 +47,8 @@ class Glow:
         pprint(data)
         raise InvalidAuth
 
-    async def handle_failed_auth(self, config: ConfigEntry, hass: HomeAssistant) -> None:
+    @staticmethod
+    async def handle_failed_auth(config: ConfigEntry, hass: HomeAssistant) -> None:
         """Attempt to refresh the current Glow token."""
         glow_auth = await hass.async_add_executor_job(
             Glow.authenticate,
@@ -89,8 +90,13 @@ class Glow:
         # Need to pull updated data from DCC first
         catchup_url = f"{self.BASE_URL}/resource/{resource}/catchup"
 
-        url = f"{self.BASE_URL}/resource/{resource}/readings?from=" + current_date + \
-            "T00:00:00&to=" + current_date + "T23:59:59&period=P1D&offset=-60&function=sum"
+        url = (
+            f"{self.BASE_URL}/resource/{resource}/readings?from="
+            + current_date
+            + "T00:00:00&to="
+            + current_date
+            + "T23:59:59&period=P1D&offset=-60&function=sum"
+        )
         headers = {"applicationId": self.app_id, "token": self.token}
 
         try:
@@ -102,7 +108,8 @@ class Glow:
         if response.status_code != 200:
             if response.json()["error"] == "incorrect elements -from in the future":
                 _LOGGER.info(
-                    "Attempted to load data from the future - expected if the day has just changed")
+                    "Attempted to load data from the future - expected if the day has just changed"
+                )
             elif response.status_code == 401:
                 raise InvalidAuth
             else:
