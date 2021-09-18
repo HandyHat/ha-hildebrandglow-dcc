@@ -75,7 +75,7 @@ class M3Sensor(SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"] + "m3"
+        return self.resource["resourceId"] + "gasm3"
 
     @property
     def name(self) -> str:
@@ -102,6 +102,7 @@ class M3Sensor(SensorEntity):
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
         return {
+            "identifiers": {(DOMAIN, self.resource["resourceId"] + "gasm3")},
             "name": "Smart Gas Meter",
         }
 
