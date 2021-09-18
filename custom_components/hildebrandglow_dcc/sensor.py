@@ -58,6 +58,9 @@ async def async_setup_entry(
 
 
 class M3Sensor(SensorEntity):
+
+    hass: HomeAssistant
+
     """Representation of a Sensor."""
 
     _attr_state_class = STATE_CLASS_TOTAL_INCREASING
@@ -88,7 +91,8 @@ class M3Sensor(SensorEntity):
         """Return the state of the sensor."""
         if self._state:
             return float(self._state["data"][0][1]) * 3.6 / 40 / 1.02264
-
+        return None
+        
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
@@ -198,6 +202,7 @@ class GlowConsumptionCurrent(SensorEntity):
             if self._state["units"] == "pence":
                 return self._state["data"][0][1] / 100.0
             return self._state["data"][0][1]
+        return None
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
