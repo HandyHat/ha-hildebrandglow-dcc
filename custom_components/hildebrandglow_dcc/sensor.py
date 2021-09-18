@@ -92,7 +92,7 @@ class M3Sensor(SensorEntity):
         if self._state:
             return float(self._state["data"][0][1]) * 3.6 / 40 / 1.02264
         return None
-        
+
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement."""
