@@ -62,7 +62,7 @@ class M3Sensor(SensorEntity):
 
     hass: HomeAssistant
 
-    """Representation of a Sensor."""
+    available = True
 
     _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
