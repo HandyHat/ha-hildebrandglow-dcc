@@ -47,7 +47,8 @@ class Glow:
         pprint(data)
         raise InvalidAuth
 
-    async def handle_failed_auth(self, config: ConfigEntry, hass: HomeAssistant) -> None:
+    @classmethod    
+    async def handle_failed_auth(cls, config: ConfigEntry, hass: HomeAssistant) -> None:
         """Attempt to refresh the current Glow token."""
         glow_auth = await hass.async_add_executor_job(
             Glow.authenticate,
