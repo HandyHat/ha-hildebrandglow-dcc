@@ -106,6 +106,9 @@ class Glow:
                     "Attempted to load data from the future - expected if the day has just changed")
             elif response.status_code == 401:
                 raise InvalidAuth
+            elif response.status_code == 404:
+                _LOGGER.error("404 error - treating as 401: " + url)
+                raise InvalidAuth
             else:
                 _LOGGER.error("Response Status Code:" + str(response.status_code))
                 self.available = False
