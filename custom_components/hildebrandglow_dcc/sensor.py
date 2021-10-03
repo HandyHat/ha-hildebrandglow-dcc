@@ -12,6 +12,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 
+import logging
+_LOGGER = logging.getLogger(__name__)
+
 from .const import DOMAIN
 from .glow import Glow, InvalidAuth
 
@@ -33,15 +36,16 @@ async def async_setup_entry(
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         except InvalidAuth:
             try:
-                await Glow.handle_failed_auth(config, hass)
+                _LOGGER.error("calling auth failed")
+                glow = await Glow.handle_failed_auth(config, hass)
             except InvalidAuth:
                 return False
 
-            glow = hass.data[DOMAIN][entry]
+            #glow = hass.data[DOMAIN][entry]
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         for resource in resources:
             if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
-                sensor = GlowConsumptionCurrent(glow, resource)
+                sensor = GlowConsumptionCurrent(glow, resource, config)
                 new_entities.append(sensor)
 
         async_add_entities(new_entities)
@@ -60,11 +64,12 @@ class GlowConsumptionCurrent(SensorEntity):
 
     _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
-    def __init__(self, glow: Glow, resource: Dict[str, Any]):
+    def __init__(self, glow: Glow, resource: Dict[str, Any], config: ConfigEntry):
         """Initialize the sensor."""
         self._state: Optional[Dict[str, Any]] = None
         self.glow = glow
         self.resource = resource
+        self.config = config
 
     @property
     def unique_id(self) -> str:
@@ -78,6 +83,7 @@ class GlowConsumptionCurrent(SensorEntity):
             return "Gas Consumption (Today)"
         if self.resource["classifier"] == "electricity.consumption":
             return "Electric Consumption (Today)"
+        return None
 
     @property
     def icon(self) -> Optional[str]:
@@ -130,4 +136,5 @@ class GlowConsumptionCurrent(SensorEntity):
                 self.glow.current_usage, self.resource["resourceId"]
             )
         except InvalidAuth:
-            Glow.handle_failed_auth(ConfigEntry, HomeAssistant)
+            _LOGGER.error("calling auth failed 2")
+            self.glow = self.glow.handle_failed_auth(self.config, self.hass)
