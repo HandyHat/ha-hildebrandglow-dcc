@@ -22,7 +22,11 @@ class Glow:
     def __init__(self, app_id: str, token: str):
         """Create an authenticated Glow object."""
         self.app_id = app_id
-        self.token = token
+        self.update_token(token)
+
+    @classmethod
+    def update_token(cls, value):
+        cls.token = value
 
     @classmethod
     def authenticate(cls, app_id: str, username: str, password: str) -> Dict[str, Any]:
@@ -47,7 +51,8 @@ class Glow:
         pprint(data)
         raise InvalidAuth
 
-    async def handle_failed_auth(self, config: ConfigEntry, hass: HomeAssistant):
+    @classmethod
+    async def handle_failed_auth(cls, config: ConfigEntry, hass: HomeAssistant) -> None:
         """Attempt to refresh the current Glow token."""
 
         _LOGGER.error("Call add executor job")
@@ -61,14 +66,12 @@ class Glow:
 
         current_config = dict(config.data.copy())
         new_config = config_object(current_config, glow_auth)
-        _LOGGER.error("DCC got config")
         hass.config_entries.async_update_entry(entry=config, data=new_config)
         _LOGGER.error("DCC updated config")
 
         glow = Glow(APP_ID, glow_auth["token"])
         hass.data[DOMAIN][config.entry_id] = glow
 
-        return glow
 
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""

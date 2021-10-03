@@ -37,11 +37,11 @@ async def async_setup_entry(
         except InvalidAuth:
             try:
                 _LOGGER.error("calling auth failed")
-                glow = await Glow.handle_failed_auth(config, hass)
+                await Glow.handle_failed_auth(config, hass)
             except InvalidAuth:
                 return False
 
-            #glow = hass.data[DOMAIN][entry]
+            glow = hass.data[DOMAIN][entry]
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         for resource in resources:
             if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
@@ -137,4 +137,4 @@ class GlowConsumptionCurrent(SensorEntity):
             )
         except InvalidAuth:
             _LOGGER.error("calling auth failed 2")
-            self.glow = self.glow.handle_failed_auth(self.config, self.hass)
+            Glow.handle_failed_auth(self.config, self.hass)
