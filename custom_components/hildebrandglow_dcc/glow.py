@@ -72,7 +72,6 @@ class Glow:
         glow = Glow(APP_ID, glow_auth["token"])
         hass.data[DOMAIN][config.entry_id] = glow
 
-
     def retrieve_resources(self) -> List[Dict[str, Any]]:
         """Retrieve the resources known to Glowmarkt for the authenticated user."""
         url = f"{self.BASE_URL}/resource"
@@ -98,8 +97,13 @@ class Glow:
         # Need to pull updated data from DCC first
         catchup_url = f"{self.BASE_URL}/resource/{resource}/catchup"
 
-        url = f"{self.BASE_URL}/resource/{resource}/readings?from=" + current_date + \
-            "T00:00:00&to=" + current_date + "T23:59:59&period=P1D&offset=-60&function=sum"
+        url = (
+            f"{self.BASE_URL}/resource/{resource}/readings?from="
+            + current_date
+            + "T00:00:00&to="
+            + current_date
+            + "T23:59:59&period=P1D&offset=-60&function=sum"
+        )
         headers = {"applicationId": self.app_id, "token": self.token}
 
         try:
@@ -111,7 +115,8 @@ class Glow:
         if response.status_code != 200:
             if response.json()["error"] == "incorrect elements -from in the future":
                 _LOGGER.info(
-                    "Attempted to load data from the future - expected if the day has just changed")
+                    "Attempted to load data from the future - expected if the day has just changed"
+                )
             elif response.status_code == 401:
                 raise InvalidAuth
             elif response.status_code == 404:
@@ -119,7 +124,7 @@ class Glow:
                 raise InvalidAuth
             else:
                 _LOGGER.error("Response Status Code:" + str(response.status_code))
-                _LOGGER.error("URL:" + url )
+                _LOGGER.error("URL:" + url)
                 self.available = False
 
         data = response.json()

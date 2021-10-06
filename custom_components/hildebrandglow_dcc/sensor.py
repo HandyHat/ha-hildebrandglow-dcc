@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+import logging
 from datetime import datetime, time, timedelta
 from typing import Any, Callable, Dict, Optional
 
@@ -12,7 +13,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 
-import logging
 _LOGGER = logging.getLogger(__name__)
 
 from .const import DOMAIN
