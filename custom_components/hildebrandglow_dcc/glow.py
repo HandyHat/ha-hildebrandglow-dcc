@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import APP_ID, DOMAIN
+from .config_flow import config_object
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class Glow:
 
     @classmethod
     def update_token(cls, value):
+        """Set the token in the class, so it is available to all instances"""
         cls.token = value
 
     @classmethod
@@ -41,8 +43,8 @@ class Glow:
 
         try:
             response = requests.post(url, json=auth, headers=headers)
-        except requests.Timeout:
-            raise CannotConnect
+        except requests.Timeout as _timeout:
+            raise CannotConnect from _timeout
 
         data = response.json()
 
@@ -62,7 +64,6 @@ class Glow:
             config.data["username"],
             config.data["password"],
         )
-        from .config_flow import config_object
 
         current_config = dict(config.data.copy())
         new_config = config_object(current_config, glow_auth)
@@ -79,8 +80,8 @@ class Glow:
 
         try:
             response = requests.get(url, headers=headers)
-        except requests.Timeout:
-            raise CannotConnect
+        except requests.Timeout as _timeout:
+            raise CannotConnect from _timeout
 
         if response.status_code != 200:
             raise InvalidAuth
@@ -109,8 +110,8 @@ class Glow:
         try:
             response = requests.get(catchup_url, headers=headers)
             response = requests.get(url, headers=headers)
-        except requests.Timeout:
-            raise CannotConnect
+        except requests.Timeout as _timeout:
+            raise CannotConnect from _timeout
 
         if response.status_code != 200:
             if response.json()["error"] == "incorrect elements -from in the future":
@@ -120,12 +121,12 @@ class Glow:
             elif response.status_code == 401:
                 raise InvalidAuth
             elif response.status_code == 404:
-                _LOGGER.error("404 error - treating as 401: " + url)
+                _LOGGER.error("404 error - treating as 401: %s", url)
                 raise InvalidAuth
             else:
-                _LOGGER.error("Response Status Code:" + str(response.status_code))
-                _LOGGER.error("URL:" + url)
-                self.available = False
+                _status = str(response.status_code)
+                _LOGGER.error("Response Status Code: %s", _status)
+                _LOGGER.error("URL: %s", url)
 
         data = response.json()
         return data
