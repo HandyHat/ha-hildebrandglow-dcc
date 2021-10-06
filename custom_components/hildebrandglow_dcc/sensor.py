@@ -192,11 +192,10 @@ class GlowConsumptionCurrent(SensorEntity):
     @property
     def device_class(self) -> str:
         """Return the device class."""
-        if self._state is not None and self._state["units"] == "kWh":
-            if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-                return DEVICE_CLASS_ENERGY
-            elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-                return DEVICE_CLASS_GAS
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+            return DEVICE_CLASS_ENERGY
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
+            return DEVICE_CLASS_GAS
         if self._state is not None and self._state["units"] == "pence":
             return DEVICE_CLASS_MONETARY
         return None
