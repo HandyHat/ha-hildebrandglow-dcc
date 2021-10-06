@@ -21,6 +21,8 @@ def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
         "password": data["password"],
         "token": glow["token"],
         "token_exp": glow["exp"],
+        "correction": data["correction"],
+        "calorific": data["calorific"],
     }
 
 

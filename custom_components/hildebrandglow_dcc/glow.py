@@ -89,7 +89,7 @@ class Glow:
         data = response.json()
         return data
 
-    def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+    def current_usage(self, resource: Dict[str, Any] ) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
         # Get today's date
         current_time = datetime.now()
