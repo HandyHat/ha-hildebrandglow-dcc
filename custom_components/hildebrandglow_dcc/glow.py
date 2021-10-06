@@ -125,12 +125,33 @@ class Glow:
                 raise InvalidAuth
             else:
                 _status = str(response.status_code)
-                _LOGGER.error("Response Status Code: %s", _status)
-                _LOGGER.error("URL: %s", url)
+                _LOGGER.error("Response Status Code: %s (%s)", _status, url)
 
         data = response.json()
         return data
 
+    def current_tariff(self, resource: Dict[str, Any] ) -> Dict[str, Any]:
+        """Retrieve the current tariff for a specified resource."""
+        url = ( f"{self.BASE_URL}/resource/{resource}/tariff" )
+        headers = {"applicationId": self.app_id, "token": self.token}
+
+        try:
+            response = requests.get(url, headers=headers)
+        except requests.Timeout as _timeout:
+            raise CannotConnect from _timeout
+
+        if response.status_code != 200:
+            if response.status_code == 401:
+                raise InvalidAuth
+            if response.status_code == 404:
+                _LOGGER.error("Tariff 404 error - treating as 401: %s", url)
+                raise InvalidAuth
+            else:
+                _status = str(response.status_code)
+                _LOGGER.error("Tariff Response Status Code: %s (%s)", _status, url)
+
+        data = response.json()
+        return data
 
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""

@@ -10,7 +10,14 @@ from .glow import CannotConnect, Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({"username": str, "password": str})
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+        vol.Optional("correction", default=1.022640): float,
+        vol.Optional("calorific", default=40): float,
+    }
+)
 
 
 def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
