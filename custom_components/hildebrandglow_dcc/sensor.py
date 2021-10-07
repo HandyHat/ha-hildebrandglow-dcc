@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, DEFAULT_VOLUME_CORRECTION, DEFAULT_CALORIFIC_VALUE
+from .const import DOMAIN, DEFAULT_VOLUME_CORRECTION, DEFAULT_CALORIFIC_VALUE, GAS_M3
 
 from .glow import Glow, InvalidAuth
 
@@ -23,9 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=2)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable) -> bool:
     """Set up the sensor platform."""
     new_entities = []
 
@@ -128,7 +126,11 @@ class GlowConsumptionCurrent(SensorEntity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            return self._state["data"][0][1]
+            try:
+                return self._state["data"][0][1]
+            except KeyError, IndexError:
+                _LOGGER.error("Lookup Error - data (%s)", self._state)
+                return None
         return None
 
     @property
@@ -189,6 +191,18 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
         return self.resource["resourceId"] + "-metric"
 
     @property
+    def device_class(self) -> str:
+        """Return the device class (always DEVICE_CLASS_GAS)."""
+        return DEVICE_CLASS_GAS
+
+    @property
+    def unit_of_measurement(self) -> Optional[str]:
+        """Return the unit of measurement."""
+        if self._state is not None: 
+            return GAS_M3
+        return None
+
+    @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         kwh = self.buddy.state
@@ -245,14 +259,19 @@ class GlowTariff(SensorEntity):
     @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
+        plan = None
         if self._state:
             try:
-                return (
-                    self._state["data"][0]["structure"][0]["planDetail"][0]["standing"]
-                    / 100
-                )
+                plan = self._state["data"][0]["structure"][0]
+                standing = plan ["planDetail"][0]["standing"]
+                standing = standing / 100
+                return standing
+
             except KeyError:
-                _LOGGER.error("Key Error - standing (%s)", self._state)
+                if plan is None:
+                    _LOGGER.error("Lookup Error - plan (%s)", self._state)
+                else:
+                    _LOGGER.error("Lookup Error - standing (%s)", plan)
                 return None
 
         return None
@@ -342,17 +361,22 @@ class GlowTariffRate(GlowTariff):
     @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
+        plan = None
         if self._state:
             try:
-                rate = self._state["data"][0]["structure"][0]["planDetail"][1]["rate"]
+                plan = self._state["data"][0]["structure"][0]
+                rate = plan["planDetail"][1]["rate"]
                 rate = rate / 100
                 if self.metric:
                     rate = rate / self.conversion
 
                 return rate
 
-            except KeyError:
-                _LOGGER.error("Key Error - rate (%s)", self._state)
+            except KeyError, IndexError:
+                if plan is None:
+                    _LOGGER.error("Key Error - plan (%s)", self._state)
+                else:
+                    _LOGGER.error("Key Error - rate (%s)", rate)
                 return None
 
         return None

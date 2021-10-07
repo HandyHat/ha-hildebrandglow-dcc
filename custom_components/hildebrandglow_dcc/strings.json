@@ -7,7 +7,7 @@
         "data": {
           "username": "Username",
           "password": "Password",
-          "correction": "GAS Volume Correction factor",
+          "correction": "GAS Volume Correction Factor",
           "calorific": "GAS Calorific Value"
         }
       }

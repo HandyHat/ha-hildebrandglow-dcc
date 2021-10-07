@@ -5,3 +5,6 @@ APP_ID = "b0f1b774-a586-4f72-9edd-27ead8aa7a8d"
 
 DEFAULT_VOLUME_CORRECTION = 1.022640
 DEFAULT_CALORIFIC_VALUE = 40.0
+
+# This ought to be in Hass!
+GAS_M3 = "m³"
