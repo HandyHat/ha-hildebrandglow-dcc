@@ -14,7 +14,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_VOLUME_CORRECTION, DEFAULT_CALORIFIC_VALUE
+
 from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,8 +59,10 @@ async def async_setup_entry(
                 new_entities.append(sensor)
                 buddysensor = GlowTariffRate(glow, resource, config, sensor, False)
                 new_entities.append(buddysensor)
-                buddysensor = GlowTariffRate(glow, resource, config, sensor, True)
-                new_entities.append(buddysensor)
+
+                if resource["classifier"] == "gas.consumption":
+                    buddysensor = GlowTariffRate(glow, resource, config, sensor, True)
+                    new_entities.append(buddysensor)
 
         async_add_entities(new_entities)
 
@@ -168,12 +171,30 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
     ):
         """Initialize the sensor."""
         super().__init__(glow, resource, config)
-        
+
         self.buddy = buddy
 
-        self.conversion_factor = 1
-        if "correction" in config and "calorific" in config:
-            self.conversion = 3.6 / self.correction / self.calorific
+        correction = DEFAULT_VOLUME_CORRECTION
+        calorific = DEFAULT_CALORIFIC_VALUE
+
+        if "correction" in config.data:
+            correction = config.data["correction"]
+        if "calorific" in config.data:
+            calorific = config.data["calorific"]
+        self.conversion = 3.6 / correction / calorific
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique identifier string for the sensor."""
+        return self.resource["resourceId"] + "-metric"
+
+    @property
+    def state(self) -> Optional[str]:
+        """Return the state of the sensor."""
+        kwh = self.buddy.state
+        if kwh:
+            return kwh * self.conversion
+        return None
 
     @property
     def name(self) -> str:
@@ -182,8 +203,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor. - read from Buddy"""
-        kwh = self.buddy._state
-        self._state = kwh * self.conversion
+        self._state = self.buddy._state
 
 
 class GlowTariff(SensorEntity):
@@ -204,7 +224,7 @@ class GlowTariff(SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"]
+        return self.resource["resourceId"] + "-tariff"
 
     @property
     def name(self) -> str:
@@ -220,14 +240,21 @@ class GlowTariff(SensorEntity):
     @property
     def icon(self) -> Optional[str]:
         """Icon to use in the frontend, if any."""
-        return "mdi:GBP"
+        return "mdi:currency-gbp"
 
     @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            """ TODO - add error checking """
-            return self._state["data"][0]["structure"][0]["PlanDetail"][0]["standing"]
+            try:
+                return (
+                    self._state["data"][0]["structure"][0]["planDetail"][0]["standing"]
+                    / 100
+                )
+            except KeyError:
+                _LOGGER.error("Key Error - standing (%s)", self._state)
+                return None
+
         return None
 
     @property
@@ -276,8 +303,21 @@ class GlowTariffRate(GlowTariff):
         self.metric = metric
 
         if metric:
-            if "correction" in config and "calorific" in config:
-                self.conversion = 3.6 / self.correction / self.calorific
+            correction = DEFAULT_VOLUME_CORRECTION
+            calorific = DEFAULT_CALORIFIC_VALUE
+
+            if "correction" in config.data:
+                correction = config.data["correction"]
+            if "calorific" in config.data:
+                calorific = config.data["calorific"]
+            self.conversion = 3.6 / correction / calorific
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique identifier string for the sensor."""
+        if self.metric:
+            return self.resource["resourceId"] + "-rate-metric"
+        return self.resource["resourceId"] + "-rate"
 
     @property
     def name(self) -> str:
@@ -303,13 +343,20 @@ class GlowTariffRate(GlowTariff):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
-            """ TODO - add error checking """
-            return self._state["data"][0]["structure"][0]["PlanDetail"][0]["standing"]
+            try:
+                rate = self._state["data"][0]["structure"][0]["planDetail"][1]["rate"]
+                rate = rate / 100
+                if self.metric:
+                    rate = rate / self.conversion
+
+                return rate
+
+            except KeyError:
+                _LOGGER.error("Key Error - rate (%s)", self._state)
+                return None
+
         return None
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        if self.metric:
-            self._state = self.buddy._state / self.buddy.conversion
-        else:
-            self._state = self.buddy._state
+        self._state = self.buddy._state

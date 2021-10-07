@@ -10,7 +10,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import APP_ID, DOMAIN
-from .config_flow import config_object
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +64,8 @@ class Glow:
             config.data["password"],
         )
 
+        from .config_flow import config_object  # isort: skip
+
         current_config = dict(config.data.copy())
         new_config = config_object(current_config, glow_auth)
         hass.config_entries.async_update_entry(entry=config, data=new_config)
@@ -89,7 +90,7 @@ class Glow:
         data = response.json()
         return data
 
-    def current_usage(self, resource: Dict[str, Any] ) -> Dict[str, Any]:
+    def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
         # Get today's date
         current_time = datetime.now()
@@ -130,9 +131,9 @@ class Glow:
         data = response.json()
         return data
 
-    def current_tariff(self, resource: Dict[str, Any] ) -> Dict[str, Any]:
+    def current_tariff(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current tariff for a specified resource."""
-        url = ( f"{self.BASE_URL}/resource/{resource}/tariff" )
+        url = f"{self.BASE_URL}/resource/{resource}/tariff"
         headers = {"applicationId": self.app_id, "token": self.token}
 
         try:
@@ -152,6 +153,7 @@ class Glow:
 
         data = response.json()
         return data
+
 
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
