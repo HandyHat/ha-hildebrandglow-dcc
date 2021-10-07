@@ -64,6 +64,7 @@ class Glow:
             config.data["password"],
         )
 
+        # pylint: disable=relative-beyond-top-level
         from .config_flow import config_object  # isort: skip
 
         current_config = dict(config.data.copy())
@@ -118,15 +119,17 @@ class Glow:
             if response.json()["error"] == "incorrect elements -from in the future":
                 err = "Attempted to load data from future - expected if the day has just changed"
                 _LOGGER.info(err)
+                return None
 
-            elif response.status_code == 401:
+            if response.status_code == 401:
                 raise InvalidAuth
-            elif response.status_code == 404:
+
+            if response.status_code == 404:
                 _LOGGER.error("404 error - treating as 401: (%s)", url)
                 raise InvalidAuth
-            else:
-                _status = str(response.status_code)
-                _LOGGER.error("Response Status Code: %s (%s)", _status, url)
+
+            status = str(response.status_code)
+            _LOGGER.error("Response Status Code: %s (%s)", status, url)
 
         data = response.json()
         return data
@@ -147,9 +150,9 @@ class Glow:
             if response.status_code == 404:
                 _LOGGER.error("Tariff 404 error - treating as 401: %s", url)
                 raise InvalidAuth
-            else:
-                _status = str(response.status_code)
-                _LOGGER.error("Tariff Response Status Code: %s (%s)", _status, url)
+
+            status = str(response.status_code)
+            _LOGGER.error("Tariff Response Status Code: %s (%s)", status, url)
 
         data = response.json()
         return data

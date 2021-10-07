@@ -5,8 +5,7 @@ from typing import Any, Dict
 import voluptuous as vol
 from homeassistant import config_entries, core, data_entry_flow
 
-from .const import APP_ID, DOMAIN, DEFAULT_VOLUME_CORRECTION, DEFAULT_CALORIFIC_VALUE
-
+from .const import APP_ID, DEFAULT_CALORIFIC_VALUE, DEFAULT_VOLUME_CORRECTION, DOMAIN
 from .glow import CannotConnect, Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)

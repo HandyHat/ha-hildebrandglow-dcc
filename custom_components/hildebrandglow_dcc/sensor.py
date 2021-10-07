@@ -14,8 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ENERGY_KILO_WATT_HOUR
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, DEFAULT_VOLUME_CORRECTION, DEFAULT_CALORIFIC_VALUE, GAS_M3
-
+from .const import DEFAULT_CALORIFIC_VALUE, DEFAULT_VOLUME_CORRECTION, DOMAIN, GAS_M3
 from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,7 +22,9 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=2)
 
 
-async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable
+) -> bool:
     """Set up the sensor platform."""
     new_entities = []
 
@@ -128,16 +129,19 @@ class GlowConsumptionCurrent(SensorEntity):
         if self._state:
             try:
                 return self._state["data"][0][1]
-            except KeyError, IndexError:
+            except (KeyError, IndexError):
                 _LOGGER.error("Lookup Error - data (%s)", self._state)
                 return None
         return None
 
     @property
+    def rawdata(self) -> Optional[str]:
+        """Return the raw state of the sensor."""
+        return self._state
+
+    @property
     def device_class(self) -> str:
         """Return the device class (always DEVICE_CLASS_ENERGY)."""
-        if self.resource["classifier"] == "gas.consumption":
-            return DEVICE_CLASS_GAS
         return DEVICE_CLASS_ENERGY
 
     @property
@@ -198,7 +202,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        if self._state is not None: 
+        if self._state is not None:
             return GAS_M3
         return None
 
@@ -217,7 +221,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor. - read from Buddy"""
-        self._state = self.buddy._state
+        self._state = self.buddy.rawdata
 
 
 class GlowTariff(SensorEntity):
@@ -244,10 +248,10 @@ class GlowTariff(SensorEntity):
     def name(self) -> str:
         """Return the name of the sensor."""
         if self.resource["classifier"] == "gas.consumption":
-            return "Gas Price Standing"
+            return "Gas Tariff Standing"
 
         if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Price Standing"
+            return "Electric Tariff Standing"
 
         return None
 
@@ -263,7 +267,7 @@ class GlowTariff(SensorEntity):
         if self._state:
             try:
                 plan = self._state["data"][0]["structure"][0]
-                standing = plan ["planDetail"][0]["standing"]
+                standing = plan["planDetail"][0]["standing"]
                 standing = standing / 100
                 return standing
 
@@ -275,6 +279,11 @@ class GlowTariff(SensorEntity):
                 return None
 
         return None
+
+    @property
+    def rawdata(self) -> Optional[str]:
+        """Return the raw state of the sensor."""
+        return self._state
 
     @property
     def device_class(self) -> str:
@@ -343,8 +352,8 @@ class GlowTariffRate(GlowTariff):
         """Return the name of the sensor."""
         if self.resource["classifier"] == "gas.consumption":
             if self.metric:
-                return "Gas Price Rate (Metric)"
-            return "Gas Price Rate"
+                return "Gas Tariff Rate (Metric)"
+            return "Gas Tariff Rate"
 
         if self.resource["classifier"] == "electricity.consumption":
             return "Electric Rate"
@@ -372,7 +381,7 @@ class GlowTariffRate(GlowTariff):
 
                 return rate
 
-            except KeyError, IndexError:
+            except (KeyError, IndexError):
                 if plan is None:
                     _LOGGER.error("Key Error - plan (%s)", self._state)
                 else:
@@ -383,4 +392,4 @@ class GlowTariffRate(GlowTariff):
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        self._state = self.buddy._state
+        self._state = self.buddy.rawdata
