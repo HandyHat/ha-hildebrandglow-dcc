@@ -56,7 +56,7 @@ class Glow:
     async def handle_failed_auth(cls, config: ConfigEntry, hass: HomeAssistant) -> None:
         """Attempt to refresh the current Glow token."""
 
-        _LOGGER.error("Call add executor job")
+        _LOGGER.debug("handle_failed_auth")
         glow_auth = await hass.async_add_executor_job(
             Glow.authenticate,
             APP_ID,
@@ -70,7 +70,6 @@ class Glow:
         current_config = dict(config.data.copy())
         new_config = config_object(current_config, glow_auth)
         hass.config_entries.async_update_entry(entry=config, data=new_config)
-        _LOGGER.error("DCC updated config")
 
         glow = Glow(APP_ID, glow_auth["token"])
         hass.data[DOMAIN][config.entry_id] = glow
@@ -125,7 +124,7 @@ class Glow:
                 raise InvalidAuth
 
             if response.status_code == 404:
-                _LOGGER.error("404 error - treating as 401: (%s)", url)
+                _LOGGER.debug("404 error - treating as 401: (%s)", url)
                 raise InvalidAuth
 
             status = str(response.status_code)

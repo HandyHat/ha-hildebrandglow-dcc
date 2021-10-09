@@ -37,7 +37,7 @@ async def async_setup_entry(
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
         except InvalidAuth:
             try:
-                _LOGGER.error("calling auth failed")
+                _LOGGER.debug("calling auth failed")
                 await Glow.handle_failed_auth(config, hass)
             except InvalidAuth:
                 return False
@@ -83,7 +83,7 @@ class GlowConsumptionCurrent(SensorEntity):
         self._state: Optional[Dict[str, Any]] = None
         self.glow = glow
         self.resource = resource
-        self.config = config
+        self.config = config    
 
     @property
     def unique_id(self) -> str:
@@ -156,12 +156,13 @@ class GlowConsumptionCurrent(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
+
         try:
             self._state = await self.hass.async_add_executor_job(
                 self.glow.current_usage, self.resource["resourceId"]
             )
         except InvalidAuth:
-            _LOGGER.error("calling auth failed 2")
+            _LOGGER.debug("calling auth failed 2")
             await Glow.handle_failed_auth(self.config, self.hass)
 
 
@@ -305,7 +306,7 @@ class GlowTariff(SensorEntity):
                 self.glow.current_tariff, self.resource["resourceId"]
             )
         except InvalidAuth:
-            _LOGGER.error("calling auth failed 2")
+            _LOGGER.debug("calling auth failed 2")
             await Glow.handle_failed_auth(self.config, self.hass)
 
 
@@ -393,3 +394,4 @@ class GlowTariffRate(GlowTariff):
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         self._state = self.buddy.rawdata
+        
