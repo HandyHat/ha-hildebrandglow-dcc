@@ -54,14 +54,20 @@ async def async_setup_entry(
                     )
                     new_entities.append(buddysensor)
 
-                sensor = GlowTariff(glow, resource, config)
-                new_entities.append(sensor)
-                buddysensor = GlowTariffRate(glow, resource, config, sensor, False)
-                new_entities.append(buddysensor)
-
-                if resource["classifier"] == "gas.consumption":
-                    buddysensor = GlowTariffRate(glow, resource, config, sensor, True)
+                if (
+                    resource["classifier"] == "gas.consumption"
+                    or resource["classifier"] == "electricity.consumption"
+                ):
+                    sensor = GlowTariff(glow, resource, config)
+                    new_entities.append(sensor)
+                    buddysensor = GlowTariffRate(glow, resource, config, sensor, False)
                     new_entities.append(buddysensor)
+
+                    if resource["classifier"] == "gas.consumption":
+                        buddysensor = GlowTariffRate(
+                            glow, resource, config, sensor, True
+                        )
+                        new_entities.append(buddysensor)
 
         async_add_entities(new_entities)
 
@@ -88,7 +94,7 @@ class GlowConsumptionCurrent(SensorEntity):
         self._state: Optional[Dict[str, Any]] = None
         self.glow = glow
         self.resource = resource
-        self.config = config    
+        self.config = config
 
     @property
     def unique_id(self) -> str:
@@ -100,7 +106,6 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the name of the sensor."""
         if self.resource["classifier"] == "gas.consumption":
             return "Gas Consumption (Today)"
-
         if self.resource["classifier"] == "electricity.consumption":
             return "Electric Consumption (Today)"
         if self.resource["classifier"] == "electricity.consumption.cost":
@@ -414,4 +419,3 @@ class GlowTariffRate(GlowTariff):
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         self._state = self.buddy.rawdata
-        
