@@ -11,10 +11,10 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.const import ENERGY_KILO_WATT_HOUR, VOLUME_CUBIC_METERS
 from homeassistant.core import HomeAssistant
 
-from .const import DEFAULT_CALORIFIC_VALUE, DEFAULT_VOLUME_CORRECTION, DOMAIN, GAS_M3
+from .const import DEFAULT_CALORIFIC_VALUE, DEFAULT_VOLUME_CORRECTION, DOMAIN
 from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,7 +74,12 @@ class GlowConsumptionCurrent(SensorEntity):
 
     hass: HomeAssistant
 
-    knownClassifiers = ["gas.consumption", "electricity.consumption"]
+    knownClassifiers = [
+        "gas.consumption",
+        "electricity.consumption",
+        "gas.consumption.cost",
+        "electricity.consumption.cost",
+    ]
 
     _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
@@ -98,17 +103,24 @@ class GlowConsumptionCurrent(SensorEntity):
 
         if self.resource["classifier"] == "electricity.consumption":
             return "Electric Consumption (Today)"
+        if self.resource["classifier"] == "electricity.consumption.cost":
+            return "Electric Cost (Today)"
+        if self.resource["classifier"] == "gas.consumption.cost":
+            return "Gas Cost (Today)"
 
         return None
 
     @property
     def icon(self) -> Optional[str]:
         """Icon to use in the frontend, if any."""
+        icon = ""
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            return "mdi:flash"
+            icon = "mdi:flash"
         if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-            return "mdi:fire"
-        return None
+            icon = "mdi:fire"
+        if self.resource["baseUnit"] == "pence":
+            icon = "mdi:cash"
+        return icon
 
     @property
     def device_info(self) -> Optional[Dict[str, Any]]:
@@ -124,10 +136,21 @@ class GlowConsumptionCurrent(SensorEntity):
         }
 
     @property
+    def device_class(self) -> str:
+        """Return the device class."""
+        if self._state is not None and self._state["units"] == "kWh":
+            return DEVICE_CLASS_ENERGY
+        if self._state is not None and self._state["units"] == "pence":
+            return DEVICE_CLASS_MONETARY
+        return None
+
+    @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self._state:
             try:
+                if self._state["units"] == "pence":
+                    return self._state["data"][0][1] / 100.0
                 return self._state["data"][0][1]
             except (KeyError, IndexError):
                 _LOGGER.error("Lookup Error - data (%s)", self._state)
@@ -140,15 +163,12 @@ class GlowConsumptionCurrent(SensorEntity):
         return self._state
 
     @property
-    def device_class(self) -> str:
-        """Return the device class (always DEVICE_CLASS_ENERGY)."""
-        return DEVICE_CLASS_ENERGY
-
-    @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
         if self._state is not None and self._state["units"] == "kWh":
             return ENERGY_KILO_WATT_HOUR
+        if self._state is not None and self._state["units"] == "pence":
+            return "GBP"
         return None
 
     async def async_update(self) -> None:
@@ -203,7 +223,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
         if self._state is not None:
-            return GAS_M3
+            return VOLUME_CUBIC_METERS
         return None
 
     @property
