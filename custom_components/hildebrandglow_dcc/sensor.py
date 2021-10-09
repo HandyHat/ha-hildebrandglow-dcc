@@ -137,4 +137,4 @@ class GlowConsumptionCurrent(SensorEntity):
             )
         except InvalidAuth:
             _LOGGER.error("calling auth failed 2")
-            Glow.handle_failed_auth(self.config, self.hass)
+            await Glow.handle_failed_auth(self.config, self.hass)
