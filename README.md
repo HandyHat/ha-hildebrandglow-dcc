@@ -29,6 +29,9 @@ Copy the `custom_components/hildebrandglow_dcc/` directory and all of its files 
 
 Visit the _Integrations_ section within Home Assistant's _Configuration_ panel and click the _Add_ button in the bottom right corner. After searching for "Hildebrand Glow", you'll be asked for your  Glow credentials.
 
+During configuration, you will be prompted for the GAS conversion factor and calorific value.
+These can be found on you GAS bill (Or accept the default values).
+
 Once you've authenticated, the integration will automatically set up a sensor for each of the smart meters on your account.
 
 ## Debugging
