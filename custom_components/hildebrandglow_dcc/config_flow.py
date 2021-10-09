@@ -5,12 +5,19 @@ from typing import Any, Dict
 import voluptuous as vol
 from homeassistant import config_entries, core, data_entry_flow
 
-from .const import APP_ID, DOMAIN
+from .const import APP_ID, DEFAULT_CALORIFIC_VALUE, DEFAULT_VOLUME_CORRECTION, DOMAIN
 from .glow import CannotConnect, Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({"username": str, "password": str})
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+        vol.Optional("correction", default=DEFAULT_VOLUME_CORRECTION): float,
+        vol.Optional("calorific", default=DEFAULT_CALORIFIC_VALUE): float,
+    }
+)
 
 
 def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
@@ -21,6 +28,8 @@ def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
         "password": data["password"],
         "token": glow["token"],
         "token_exp": glow["exp"],
+        "correction": data["correction"],
+        "calorific": data["calorific"],
     }
 
 
