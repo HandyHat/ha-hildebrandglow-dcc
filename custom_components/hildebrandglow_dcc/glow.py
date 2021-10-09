@@ -147,7 +147,7 @@ class Glow:
             if response.status_code == 401:
                 raise InvalidAuth
             if response.status_code == 404:
-                _LOGGER.error("Tariff 404 error - treating as 401: %s", url)
+                _LOGGER.debug("Tariff 404 error - treating as 401: %s", url)
                 raise InvalidAuth
 
             status = str(response.status_code)
