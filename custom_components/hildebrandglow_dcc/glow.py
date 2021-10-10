@@ -55,7 +55,6 @@ class Glow:
     @classmethod
     async def handle_failed_auth(cls, config: ConfigEntry, hass: HomeAssistant) -> None:
         """Attempt to refresh the current Glow token."""
-
         _LOGGER.debug("handle_failed_auth")
         glow_auth = await hass.async_add_executor_job(
             Glow.authenticate,
@@ -64,7 +63,7 @@ class Glow:
             config.data["password"],
         )
 
-        # pylint: disable=relative-beyond-top-level
+        # pylint: disable=import-outside-toplevel
         from .config_flow import config_object  # isort: skip
 
         current_config = dict(config.data.copy())
@@ -116,7 +115,8 @@ class Glow:
 
         if response.status_code != 200:
             if response.json()["error"] == "incorrect elements -from in the future":
-                err = "Attempted to load data from future - expected if the day has just changed"
+                err = "Attempted to load data from future"
+                err = err + " - expected if the day has just changed"
                 _LOGGER.info(err)
                 return None
 

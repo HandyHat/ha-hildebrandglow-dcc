@@ -28,6 +28,17 @@ async def async_setup_entry(
     """Set up the sensor platform."""
     new_entities = []
 
+    known_classifiers = [
+        "gas.consumption",
+        "electricity.consumption",
+        "gas.consumption.cost",
+        "electricity.consumption.cost",
+    ]
+    tariff_classifiers = [
+        "gas.consumption",
+        "electricity.consumption",
+    ]
+
     for entry in hass.data[DOMAIN]:
         glow = hass.data[DOMAIN][entry]
 
@@ -44,30 +55,28 @@ async def async_setup_entry(
 
             glow = hass.data[DOMAIN][entry]
             resources = await hass.async_add_executor_job(glow.retrieve_resources)
+
         for resource in resources:
-            if resource["classifier"] in GlowConsumptionCurrent.knownClassifiers:
-                sensor = GlowConsumptionCurrent(glow, resource, config)
-                new_entities.append(sensor)
-                if resource["classifier"] == "gas.consumption":
-                    buddysensor = GlowConsumptionCurrentMetric(
-                        glow, resource, config, sensor
+            if resource["classifier"] in known_classifiers:
+                base_sensor = GlowConsumptionCurrent(glow, resource, config)
+                new_entities.append(base_sensor)
+
+                if resource["classifier"] in tariff_classifiers:
+                    rate_sensor = GlowTariff(glow, resource, config)
+                    new_entities.append(rate_sensor)
+                    tariff_sensor = GlowTariffRate(
+                        glow, resource, config, rate_sensor, False
                     )
-                    new_entities.append(buddysensor)
+                    new_entities.append(tariff_sensor)
 
-                if (
-                    resource["classifier"] == "gas.consumption"
-                    or resource["classifier"] == "electricity.consumption"
-                ):
-                    sensor = GlowTariff(glow, resource, config)
-                    new_entities.append(sensor)
-                    buddysensor = GlowTariffRate(glow, resource, config, sensor, False)
-                    new_entities.append(buddysensor)
+                if resource["classifier"] == "gas.consumption":
+                    m3sensor = GlowConsumptionCurrentMetric(
+                        glow, resource, config, base_sensor
+                    )
+                    new_entities.append(m3sensor)
 
-                    if resource["classifier"] == "gas.consumption":
-                        buddysensor = GlowTariffRate(
-                            glow, resource, config, sensor, True
-                        )
-                        new_entities.append(buddysensor)
+                    t3sensor = GlowTariffRate(glow, resource, config, rate_sensor, True)
+                    new_entities.append(t3sensor)
 
         async_add_entities(new_entities)
 
@@ -77,15 +86,6 @@ async def async_setup_entry(
 class GlowConsumptionCurrent(SensorEntity):
 
     """Sensor object for the Glowmarkt resource's current consumption."""
-
-    hass: HomeAssistant
-
-    knownClassifiers = [
-        "gas.consumption",
-        "electricity.consumption",
-        "gas.consumption.cost",
-        "electricity.consumption.cost",
-    ]
 
     _attr_state_class = STATE_CLASS_TOTAL_INCREASING
 
@@ -157,7 +157,7 @@ class GlowConsumptionCurrent(SensorEntity):
                 if self._state["units"] == "pence":
                     return self._state["data"][0][1] / 100.0
                 return self._state["data"][0][1]
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, TypeError):
                 _LOGGER.error("Lookup Error - data (%s)", self._state)
                 return None
         return None
@@ -178,10 +178,8 @@ class GlowConsumptionCurrent(SensorEntity):
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
-
         This is the only method that should fetch new data for Home Assistant.
         """
-
         try:
             self._state = await self.hass.async_add_executor_job(
                 self.glow.current_usage, self.resource["resourceId"]
@@ -251,12 +249,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
 
 
 class GlowTariff(SensorEntity):
-
     """Sensor object for the Glowmarkt resource's standing tariff."""
-
-    hass: HomeAssistant
-
-    knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
     def __init__(self, glow: Glow, resource: Dict[str, Any], config: ConfigEntry):
         """Initialize the sensor."""
@@ -292,8 +285,8 @@ class GlowTariff(SensorEntity):
         plan = None
         if self._state:
             try:
-                plan = self._state["data"][0]["structure"][0]
-                standing = plan["planDetail"][0]["standing"]
+                plan = self._state["data"][0]["currentRates"]
+                standing = plan["standingCharge"]
                 standing = standing / 100
                 return standing
 
@@ -337,10 +330,6 @@ class GlowTariff(SensorEntity):
 
 class GlowTariffRate(GlowTariff):
     """Sensor object for the Glowmarkt resource's current unit tariff."""
-
-    hass: HomeAssistant
-
-    knownClassifiers = ["gas.consumption", "electricity.consumption"]
 
     def __init__(
         self,
@@ -399,15 +388,15 @@ class GlowTariffRate(GlowTariff):
         plan = None
         if self._state:
             try:
-                plan = self._state["data"][0]["structure"][0]
-                rate = plan["planDetail"][1]["rate"]
+                plan = self._state["data"][0]["currentRates"]
+                rate = plan["rate"]
                 rate = rate / 100
                 if self.metric:
                     rate = rate / self.conversion
 
                 return rate
 
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, TypeError):
                 if plan is None:
                     _LOGGER.error("Key Error - plan (%s)", self._state)
                 else:
