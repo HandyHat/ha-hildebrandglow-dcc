@@ -68,7 +68,7 @@ Once you've authenticated to Glow, the integration will automatically set up the
   Current tariff in GBP/m³
 
 ## HASS Energy Integration
-The sensors created provide everything needed to integrate Electicity and GAS meter readings as well as costs into the HASS [Home Energy Management](https://www.home-assistant.io/docs/energy/)
+The sensors created provide everything needed to integrate Electicity and GAS meter readings as well as costs into the HASS [Home Energy Management](https://www.home-assistant.io/docs/energy/).
 
 ## Debugging
 
@@ -108,3 +108,5 @@ Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) 
 - [@HandyHat](https://github.com/HandyHat)
 - [@ColinRobbins](https://github.com/ColinRobbins)
 - [@totalitarian](https://github.com/totalitarian)
+- [@nlobito](https://github.com/unlobito)
+- [@declan-morris](https://github.com/declan-morris)
