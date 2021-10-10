@@ -371,7 +371,7 @@ class GlowTariffRate(GlowTariff):
             return "Gas Tariff Rate"
 
         if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Rate"
+            return "Electric Tariff Rate"
 
         return None
 
