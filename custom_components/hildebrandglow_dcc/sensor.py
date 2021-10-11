@@ -154,9 +154,11 @@ class GlowConsumptionCurrent(SensorEntity):
         """Return the state of the sensor."""
         if self._state:
             try:
+                res = self._state["data"][0][1]
                 if self._state["units"] == "pence":
-                    return self._state["data"][0][1] / 100.0
-                return self._state["data"][0][1]
+                    res = res / 100.0
+                    return round(res, 2)
+                return round(res, 3)
             except (KeyError, IndexError, TypeError):
                 _LOGGER.error("Lookup Error - data (%s)", self._state)
                 return None
@@ -235,7 +237,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
         """Return the state of the sensor."""
         kwh = self.buddy.state
         if kwh:
-            return kwh * self.conversion
+            return round(kwh * self.conversion, 4)
         return None
 
     @property
@@ -394,7 +396,7 @@ class GlowTariffRate(GlowTariff):
                 if self.metric:
                     rate = rate / self.conversion
 
-                return rate
+                return round(rate, 4)
 
             except (KeyError, IndexError, TypeError):
                 if plan is None:
