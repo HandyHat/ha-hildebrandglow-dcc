@@ -152,7 +152,7 @@ class GlowConsumptionCurrent(SensorEntity):
     @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
-        if self._state:
+        if self._state is not None:
             try:
                 res = self._state["data"][0][1]
                 if self._state["units"] == "pence":
@@ -236,7 +236,7 @@ class GlowConsumptionCurrentMetric(GlowConsumptionCurrent):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         kwh = self.buddy.state
-        if kwh:
+        if kwh is not None:
             return round(kwh * self.conversion, 4)
         return None
 
@@ -285,7 +285,7 @@ class GlowTariff(SensorEntity):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         plan = None
-        if self._state:
+        if self._state is not None:
             try:
                 plan = self._state["data"][0]["currentRates"]
                 standing = plan["standingCharge"]
@@ -388,7 +388,7 @@ class GlowTariffRate(GlowTariff):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         plan = None
-        if self._state:
+        if self._state is not None:
             try:
                 plan = self._state["data"][0]["currentRates"]
                 rate = plan["rate"]
