@@ -14,7 +14,7 @@ CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 PLATFORMS = ["sensor"]
 
 
-async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
+async def async_setup(hass: HomeAssistant, _unused: Dict[str, Any]) -> bool:
     """Set up the Hildebrand Glow component."""
     hass.data[DOMAIN] = {}
 

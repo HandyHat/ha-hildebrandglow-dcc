@@ -10,7 +10,12 @@ from .glow import CannotConnect, Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({"username": str, "password": str})
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required("username"): str,
+        vol.Required("password"): str,
+    }
+)
 
 
 def config_object(data: dict, glow: Dict[str, Any]) -> Dict[str, Any]:
@@ -50,7 +55,8 @@ class DomainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
-                assert self.hass is not None
+                if self.hass is None:
+                    raise AssertionError
                 info = await validate_input(self.hass, user_input)
 
                 return self.async_create_entry(title=info["name"], data=info)
