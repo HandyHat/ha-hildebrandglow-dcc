@@ -62,4 +62,8 @@ This project makes use of isort, pylint and autopep8 to enforce a consistent cod
 
 ## Credits
 
-Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked, and to [this python library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library) for helping me troubleshoot.
+Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked, which now provides the MQTT interface, for realtime data via a Hildebrand device.
+
+The Hildebrand API [documentation](https://docs.glowmarkt.com/GlowmarktAPIDataRetrievalDocumentationIndividualUserForBright.pdf) and [Swagger UI](https://api.beething.com/api-docs/v0-1/resourcesys/).
+
+The [Hildebrand-Glow-Python-Library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library) was great for understanding the API.
