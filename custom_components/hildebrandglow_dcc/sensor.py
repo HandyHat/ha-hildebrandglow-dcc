@@ -62,6 +62,9 @@ async def async_setup_entry(
                 new_entities.append(base_sensor)
                 meters[resource["classifier"]] = base_sensor
 
+                cumulative_sensor = GlowCumulative(glow, resource, config)
+                new_entities.append(cumulative_sensor)
+
                 rate_sensor = GlowStanding(glow, resource, config)
                 new_entities.append(rate_sensor)
                 tariff_sensor = GlowRate(glow, resource, config, rate_sensor)
@@ -201,6 +204,31 @@ class GlowUsage(SensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         await self._glow_update(self.glow.current_usage)
+
+
+class GlowCumulative(GlowUsage):
+    """Sensor object for the Glowmarkt resource's current yearly consumption."""
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique identifier string for the sensor."""
+        return self.resource["resourceId"] + "-cumulative"
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        if self.resource["classifier"] == "gas.consumption":
+            return "Gas Consumption (Year)"
+        if self.resource["classifier"] == "electricity.consumption":
+            return "Electric Consumption (Year)"
+        return None
+
+    async def async_update(self) -> None:
+        """Fetch new state data for the sensor.
+
+        This is the only method that should fetch new data for Home Assistant.
+        """
+        await self._glow_update(self.glow.cumulative_usage)
 
 
 class GlowStanding(GlowUsage):
