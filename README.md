@@ -11,8 +11,6 @@ This integration works without requiring a consumer device provided by Hildebran
 
 The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will work with their hardware, you should use the MQTT version [here](https://github.com/unlobito/ha-hildebrandglow/tree/mqtt) to get real-time consumption data.
 
-This integration will currently emit one sensor for the daily usage of each detected smart meter.
-
 ## Installation
 
 ### Automated installation through HACS
@@ -29,7 +27,37 @@ Copy the `custom_components/hildebrandglow_dcc/` directory and all of its files 
 
 Visit the _Integrations_ section within Home Assistant's _Configuration_ panel and click the _Add_ button in the bottom right corner. After searching for "Hildebrand Glow", you'll be asked for your  Glow credentials.
 
-Once you've authenticated, the integration will automatically set up a sensor for each of the smart meters on your account.
+Once you've authenticated to Glow, the integration will automatically set up the following sensors for each of the smart meters on your account.
+
+### Electricity Sensors
+- Electric Consumption (Today)
+  
+  Consumption today in kWh
+- Electric Cost (Today)
+
+  Cost in pence of electricity used today
+- Electric Tariff Standing
+
+  Todays standing charge for electricity (GBP)
+- Electric Tariff Rate
+
+  Current tariff in GBP/kWh
+### GAS Sensors
+- Gas Consumption (Today)
+
+  Consumption today in kWh
+- Gas Cost (Today)
+
+  Cost in pence of GAS used today
+- Gas Tariff Standing
+
+  Todays standing charge for GAS (GBP)
+- Gas Tariff Rate
+
+  Current tariff in GBP/kWh
+
+## HASS Energy Integration
+The sensors created provide everything needed to integrate Electicity and GAS meter readings as well as costs into the HASS [Home Energy Management](https://www.home-assistant.io/docs/energy/).
 
 ## Debugging
 
