@@ -168,7 +168,8 @@ class GlowUsage(SensorEntity):
                     return round(res, 2)
                 return round(res, 3)
             except (KeyError, IndexError, TypeError) as _error:
-                _LOGGER.error("Lookup Error - data (%s): (%s)", _error, self._state)
+                _LOGGER.error("Lookup Error - data (%s): (%s)",
+                              _error, self._state)
                 return None
         return None
 
@@ -240,9 +241,11 @@ class GlowStanding(GlowUsage):
 
             except (KeyError, IndexError, TypeError) as _error:
                 if plan is None:
-                    _LOGGER.error("Lookup Error - plan (%s): (%s)", _error, self._state)
+                    _LOGGER.error("Lookup Error - plan (%s): (%s)",
+                                  _error, self._state)
                 else:
-                    _LOGGER.error("Lookup Error - standing (%s): (%s)", _error, plan)
+                    _LOGGER.error(
+                        "Lookup Error - standing (%s): (%s)", _error, plan)
                 return None
 
         return None
@@ -315,7 +318,8 @@ class GlowRate(GlowStanding):
 
             except (KeyError, IndexError, TypeError) as _error:
                 if plan is None:
-                    _LOGGER.error("Key Error - plan (%s): (%s)", _error, self._state)
+                    _LOGGER.error("Key Error - plan (%s): (%s)",
+                                  _error, self._state)
                 else:
                     _LOGGER.error("Key Error - rate (%s): (%s)", _error, plan)
                 return None
