@@ -181,7 +181,7 @@ class Glow:
             + "&function=sum"
         )
 
-        return self._current_data(resource, url, True)
+        return self._current_data(resource, url, False)
 
     def current_tariff(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current tariff for a specified resource."""
