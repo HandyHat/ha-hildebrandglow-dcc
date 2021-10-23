@@ -131,11 +131,9 @@ class Glow:
 
         return response.json()
 
-    def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        """Retrieve the current usage for a specified resource."""
-        # Get today's date
-        current_time = datetime.utcnow()
-        current_date = current_time.strftime("%Y-%m-%d")
+    @staticmethod
+    def calc_offset() -> str:
+        """Calculate the time, and DST offset"""
         if time.daylight and (time.localtime().tm_isdst > 0):
             utc_offset = time.altzone
         else:
@@ -146,9 +144,14 @@ class Glow:
             utc_str = f"&offset={utc_offset}"
         else:
             utc_str = ""
+        return utc_str
 
+    def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieve the current usage for a specified resource."""
         # Need to pull updated data from DCC first
-
+        current_time = datetime.utcnow()
+        current_date = current_time.strftime("%Y-%m-%d")
+        utc_str = self.calc_offset()
         url = (
             f"{self.BASE_URL}/resource/{resource}/readings?from="
             + current_date
@@ -160,6 +163,25 @@ class Glow:
         )
 
         return self._current_data(resource, url, True)
+
+    def cumulative_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieve the current usage for a specified resource."""
+        # Need to pull updated data from DCC first
+        current_time = datetime.utcnow()
+        current_date = current_time.strftime("%Y-%m-%d")
+        current_year = current_time.strftime("%Y-01-01")
+        utc_str = self.calc_offset()
+        url = (
+            f"{self.BASE_URL}/resource/{resource}/readings?from="
+            + current_year
+            + "T00:00:00&to="
+            + current_date
+            + "T23:59:59&period=P1Y"
+            + utc_str
+            + "&function=sum"
+        )
+
+        return self._current_data(resource, url, False)
 
     def current_tariff(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current tariff for a specified resource."""

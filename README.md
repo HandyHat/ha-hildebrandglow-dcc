@@ -31,8 +31,11 @@ Once you've authenticated to Glow, the integration will automatically set up the
 
 ### Electricity Sensors
 - Electric Consumption (Today)
-  
+
   Consumption today in kWh
+- Electric Consumption (Year)
+
+  Consumption for the year to date in kWh
 - Electric Cost (Today)
 
   Cost in pence of electricity used today
@@ -46,6 +49,9 @@ Once you've authenticated to Glow, the integration will automatically set up the
 - Gas Consumption (Today)
 
   Consumption today in kWh
+- Gas Consumption (Year)
+
+  Consumption for the year to date in kWh
 - Gas Cost (Today)
 
   Cost in pence of GAS used today
@@ -58,6 +64,7 @@ Once you've authenticated to Glow, the integration will automatically set up the
 
 ## HASS Energy Integration
 The sensors created provide everything needed to integrate Electicity and GAS meter readings as well as costs into the HASS [Home Energy Management](https://www.home-assistant.io/docs/energy/).
+It is recommended you use the yearly sensors in the Energy integration.
 
 ## Debugging
 
