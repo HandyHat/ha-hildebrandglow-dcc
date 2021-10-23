@@ -34,7 +34,7 @@ Once you've authenticated to Glow, the integration will automatically set up the
 
   Consumption today in kWh
 - Electric Consumption (Year)
- 
+
   Consumption for the year to date in kWh
 - Electric Cost (Today)
 
