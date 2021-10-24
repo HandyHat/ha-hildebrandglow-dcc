@@ -149,7 +149,7 @@ class Glow:
     def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
         # Need to pull updated data from DCC first
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         current_date = current_time.strftime("%Y-%m-%d")
         utc_str = self.calc_offset()
         url = (
@@ -167,7 +167,7 @@ class Glow:
     def cumulative_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve the current usage for a specified resource."""
         # Need to pull updated data from DCC first
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         current_date = current_time.strftime("%Y-%m-%d")
         current_year = current_time.strftime("%Y-01-01")
         utc_str = self.calc_offset()
