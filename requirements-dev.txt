@@ -1,4 +1,4 @@
-autopep8==1.5.7
+autopep8==1.6.0
 homeassistant==2021.10.6
 isort==5.9.3
 pylint==2.11.1
