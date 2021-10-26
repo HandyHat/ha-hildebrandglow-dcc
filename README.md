@@ -9,13 +9,13 @@ Home Assistant integration for energy consumption data from UK SMETS (Smart) met
 
 This integration works without requiring a consumer device provided by Hildebrand Glow and can work with your existing smart meter. You'll need to set up your smart meter for free in the Bright app on [Android](https://play.google.com/store/apps/details?id=uk.co.hildebrand.brightionic&hl=en_GB) or [iOS](https://apps.apple.com/gb/app/bright/id1369989022). This will only work when using the Data Communications Company (DCC) backend, which all SMETS 2 meters and some SMETS 1 meters do ([more information](https://www.smartme.co.uk/technical.html)). Once you can see your data in the app, you are good to go.
 
-The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will work with their hardware, you should use the MQTT version [here](https://github.com/unlobito/ha-hildebrandglow/tree/mqtt) to get real-time consumption data.
+The data provided will be delayed by around 30 minutes. Unfortunately this means the daily sensors lose the last 30 mins of the day. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will work with their hardware, you should use the MQTT version [here](https://github.com/unlobito/ha-hildebrandglow/) to get real-time consumption data.
 
 ## Installation
 
 ### Automated installation through HACS
 
-You can install this component through [HACS](https://hacs.xyz/) and receive automatic updates.
+You can install this component through [HACS](https://hacs.xyz/) to easily receive updates.
 
 After installing HACS, visit the HACS _Integrations_ pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the _Integrations_ pane.
 
@@ -27,43 +27,27 @@ Copy the `custom_components/hildebrandglow_dcc/` directory and all of its files 
 
 Visit the _Integrations_ section within Home Assistant's _Configuration_ panel and click the _Add_ button in the bottom right corner. After searching for "Hildebrand Glow", you'll be asked for your  Glow credentials.
 
-Once you've authenticated to Glow, the integration will automatically set up the following sensors for each of the smart meters on your account.
+Once you've authenticated to Glow, the integration will automatically set up the following sensors for each of the smart meters on your account:
 
 ### Electricity Sensors
-- Electric Consumption (Today)
 
-  Consumption today in kWh
-- Electric Consumption (Year)
+- Electric Consumption (Today) - Consumption today (kWh)
+- Electric Consumption (Year) - Consumption for the year to date (kWh)
+- Electric Cost (Today) - Cost electricity used today (GBP)
+- Electric Tariff Standing - Today's standing charge for electricity (GBP/kWh)
+- Electric Tariff Rate - Current tariff (GBP/kWh)
 
-  Consumption for the year to date in kWh
-- Electric Cost (Today)
+### Gas Sensors
 
-  Cost in pence of electricity used today
-- Electric Tariff Standing
+- Gas Consumption (Today) - Consumption today (kWh)
+- Gas Consumption (Year) - Consumption for the year to date (kWh)
+- Gas Cost (Today) - Cost electricity used today (GBP)
+- Gas Tariff Standing - Today's standing charge for electricity (GBP/kWh)
+- Gas Tariff Rate - Current tariff (GBP/kWh)
 
-  Todays standing charge for electricity (GBP)
-- Electric Tariff Rate
+## Energy Management
 
-  Current tariff in GBP/kWh
-### GAS Sensors
-- Gas Consumption (Today)
-
-  Consumption today in kWh
-- Gas Consumption (Year)
-
-  Consumption for the year to date in kWh
-- Gas Cost (Today)
-
-  Cost in pence of GAS used today
-- Gas Tariff Standing
-
-  Todays standing charge for GAS (GBP)
-- Gas Tariff Rate
-
-  Current tariff in GBP/kWh
-
-## HASS Energy Integration
-The sensors created provide everything needed to integrate Electicity and GAS meter readings as well as costs into the HASS [Home Energy Management](https://www.home-assistant.io/docs/energy/).
+The sensors created integrate directly into Home Assistant's [Home Energy Management](https://www.home-assistant.io/docs/energy/).
 It is recommended you use the yearly sensors in the Energy integration.
 
 ## Debugging
@@ -97,8 +81,12 @@ This project makes use of isort, pylint and autopep8 to enforce a consistent cod
 
 ## Credits
 
-Thanks to the [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked, which now provides the MQTT interface, for realtime data via a Hildebrand device.
+Thanks go to:
 
-The Hildebrand API [documentation](https://docs.glowmarkt.com/GlowmarktAPIDataRetrievalDocumentationIndividualUserForBright.pdf) and [Swagger UI](https://api.beething.com/api-docs/v0-1/resourcesys/).
+- The [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked. It currently provides MQTT access for those with Hildebrand CAD Hardware.
 
-The [Hildebrand-Glow-Python-Library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library) was great for understanding the API.
+- The Hildebrand API [documentation](https://docs.glowmarkt.com/GlowmarktAPIDataRetrievalDocumentationIndividualUserForBright.pdf) and [Swagger UI](https://api.beething.com/api-docs/v0-1/resourcesys/).
+
+- The [Hildebrand-Glow-Python-Library](https://github.com/ghostseven/Hildebrand-Glow-Python-Library), used for understanding the API.
+
+- All of the contributors and users, without whom this integration wouldn't be where it is today.
