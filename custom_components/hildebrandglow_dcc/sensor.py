@@ -95,6 +95,7 @@ class GlowUsage(SensorEntity):
         self.resource = resource
         self.config = config
         self.meter = None
+        self.data_error_logged = False
 
     @property
     def unique_id(self) -> str:
@@ -171,8 +172,11 @@ class GlowUsage(SensorEntity):
                     return round(res, 2)
                 return round(res, 3)
             except (KeyError, IndexError, TypeError) as _error:
-                _LOGGER.error("Lookup Error - data (%s): (%s)",
-                              _error, self._state)
+                if self.data_error_logged:
+                    return None 
+                self.data_error_logged = True
+                _LOGGER.error("Glow API data error (%s): (%s)",
+                              self.name, _error)
                 return None
         return None
 
@@ -268,12 +272,11 @@ class GlowStanding(GlowUsage):
                 return standing
 
             except (KeyError, IndexError, TypeError) as _error:
-                if plan is None:
-                    _LOGGER.error("Lookup Error - plan (%s): (%s)",
-                                  _error, self._state)
-                else:
-                    _LOGGER.error(
-                        "Lookup Error - standing (%s): (%s)", _error, plan)
+                if self.data_error_logged:
+                    return None 
+                self.data_error_logged = True
+                _LOGGER.error("Glow API data error (%s): (%s)",
+                              self.name, _error)
                 return None
 
         return None
@@ -345,11 +348,11 @@ class GlowRate(GlowStanding):
                 return round(rate, 4)
 
             except (KeyError, IndexError, TypeError) as _error:
-                if plan is None:
-                    _LOGGER.error("Key Error - plan (%s): (%s)",
-                                  _error, self._state)
-                else:
-                    _LOGGER.error("Key Error - rate (%s): (%s)", _error, plan)
+                if self.data_error_logged:
+                    return None 
+                self.data_error_logged = True
+                _LOGGER.error("Glow API data error (%s): (%s)",
+                              self.name, _error)
                 return None
 
         return None
