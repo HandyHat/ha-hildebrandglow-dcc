@@ -143,7 +143,7 @@ class Glow:
             utc_offset = int(utc_offset / 60)
             utc_str = f"&offset={utc_offset}"
         else:
-            utc_str = ""
+            utc_str = "&offset=0"
         return utc_str
 
     def current_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
