@@ -34,7 +34,7 @@ Once you've authenticated to Glow, the integration will automatically set up the
 - Electric Consumption (Today) - Consumption today (kWh)
 - Electric Consumption (Year) - Consumption for the year to date (kWh)
 - Electric Cost (Today) - Cost electricity used today (GBP)
-- Electric Tariff Standing - Today's standing charge for electricity (GBP/kWh)
+- Electric Tariff Standing - Today's standing charge for electricity (GBP)
 - Electric Tariff Rate - Current tariff (GBP/kWh)
 
 ### Gas Sensors
@@ -42,7 +42,7 @@ Once you've authenticated to Glow, the integration will automatically set up the
 - Gas Consumption (Today) - Consumption today (kWh)
 - Gas Consumption (Year) - Consumption for the year to date (kWh)
 - Gas Cost (Today) - Cost electricity used today (GBP)
-- Gas Tariff Standing - Today's standing charge for electricity (GBP/kWh)
+- Gas Tariff Standing - Today's standing charge for electricity (GBP)
 - Gas Tariff Rate - Current tariff (GBP/kWh)
 
 ## Energy Management
