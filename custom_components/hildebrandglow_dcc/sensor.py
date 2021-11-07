@@ -286,7 +286,7 @@ class GlowStanding(GlowUsage):
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        return "GBP/kWh"
+        return "GBP"
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
