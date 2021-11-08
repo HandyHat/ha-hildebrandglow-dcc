@@ -43,7 +43,7 @@ class Glow:
 
         try:
             _LOGGER.debug("Post 1: (%s)", url)
-            response = requests.http.post(url, json=auth, headers=headers)
+            response = requests.post(url, json=auth, headers=headers)
         except requests.Timeout as _timeout:
             raise CannotConnect from _timeout
 
