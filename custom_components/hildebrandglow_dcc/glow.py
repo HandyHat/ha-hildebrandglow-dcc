@@ -23,7 +23,7 @@ class Glow:
         """Create an authenticated Glow object."""
         self.app_id = app_id
         self.update_token(token)
-        self.http = requests.Session() 
+        self.http = requests.Session()
 
     @classmethod
     def update_token(cls, value):
