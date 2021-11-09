@@ -333,7 +333,7 @@ class GlowRate(GlowStanding):
     @property
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
-        return "GBP/kWh"
+        return "GBP"
 
     @property
     def state(self) -> Optional[str]:
