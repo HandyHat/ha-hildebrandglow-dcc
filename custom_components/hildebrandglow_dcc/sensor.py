@@ -180,11 +180,12 @@ class GlowUsage(SensorEntity):
                 return round(res, 3)
             except (KeyError, IndexError, TypeError) as _error:
                 if self.data_error_logged:
-                    return None
+                    return GLOW_DATA_UNAVAILABLE
+
                 self.data_error_logged = True
                 _LOGGER.error("Glow API data error (%s): (%s)",
                               self.name, _error)
-                return None
+                return GLOW_DATA_UNAVAILABLE
 
         if not self.initialised:
             return GLOW_STARTING
