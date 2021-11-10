@@ -260,7 +260,7 @@ class GlowStanding(GlowUsage):
         super().__init__(glow, resource, config)
         self._attr_state_class = STATE_CLASS_MEASUREMENT
         self.backoff = 0
-        self.available = False
+        self.tariff_available = False
 
     @property
     def unique_id(self) -> str:
@@ -290,7 +290,7 @@ class GlowStanding(GlowUsage):
                 plan = self._state["data"][0]["currentRates"]
                 standing = plan["standingCharge"]
                 standing = float(standing) / 100
-                self.available = True
+                self.tariff_available = True
                 return standing
 
             except (KeyError, IndexError, TypeError):
@@ -299,7 +299,7 @@ class GlowStanding(GlowUsage):
 
                 self.data_error_logged = True
 
-                if self.available:  # Has data ever been available?
+                if self.tariff_available:  # Has data ever been available?
                     self.backoff = BACKOFF_HOUR
                 else:
                     self.backoff = BACKOFF_DAY
