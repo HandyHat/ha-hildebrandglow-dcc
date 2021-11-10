@@ -24,7 +24,7 @@ SCAN_INTERVAL = timedelta(minutes=2)
 
 BACKOFF_HOUR = 30  # Updates once every 2 minutes by default.
 BACKOFF_DAY = BACKOFF_HOUR * 24
-GLOW_STARTING = "Staring..."
+GLOW_STARTING = "Starting..."
 GLOW_DATA_UNAVAILABLE = "Unavailable"
 
 
