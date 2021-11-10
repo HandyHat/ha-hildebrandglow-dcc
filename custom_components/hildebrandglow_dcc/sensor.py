@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any, Callable, Dict, Optional
@@ -329,10 +330,8 @@ class GlowStanding(GlowUsage):
             self.backoff -= 1
             return
         
-        self.backoff = 0
-
         await self._glow_update(self.glow.current_tariff)
-
+        self.backoff = 0
 
 class GlowRate(GlowStanding):
     """Sensor object for the Glowmarkt resource's current unit tariff."""
@@ -396,5 +395,6 @@ class GlowRate(GlowStanding):
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
+        await asyncio.sleep(2)  # give standing rate sensor time to update
         self._state = self.buddy.rawdata
         self.initialised = self.buddy.initialised
