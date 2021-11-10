@@ -328,8 +328,8 @@ class GlowStanding(GlowUsage):
         if self.backoff > 1:
             self.backoff -= 1
             return
-        elif self.backoff == 1:
-            self.backoff = 0
+        
+        self.backoff = 0
 
         await self._glow_update(self.glow.current_tariff)
 
