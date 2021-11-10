@@ -325,8 +325,8 @@ class GlowStanding(GlowUsage):
 
         This is the only method that should fetch new data for Home Assistant.
         """
+        self.backoff -= 1
         if self.backoff > 0:
-            self.backoff -= 1
             return
 
         await self._glow_update(self.glow.current_tariff)
