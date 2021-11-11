@@ -12,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.const import ENERGY_KILO_WATT_HOUR, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
@@ -21,11 +21,7 @@ from .glow import Glow, InvalidAuth
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=2)
-
-BACKOFF_HOUR = 30  # Updates once every 2 minutes by default.
-BACKOFF_DAY = BACKOFF_HOUR * 24
-GLOW_STARTING = "Starting..."
-GLOW_DATA_UNAVAILABLE = "Unavailable"
+BACKOFF_DAY = 30 * 24  # Updates once every 2 minutes by default.
 
 
 async def async_setup_entry(
@@ -103,7 +99,6 @@ class GlowUsage(SensorEntity):
         self.config = config
         self.meter = None
         self.data_error_logged = False
-        self.initialised = False
 
     @property
     def unique_id(self) -> str:
@@ -177,21 +172,21 @@ class GlowUsage(SensorEntity):
                 res = self._state["data"][0][1]
                 if self._state["units"] == "pence":
                     res = float(res) / 100.0
+                    self.data_error_logged = False
                     return round(res, 2)
+
+                self.data_error_logged = False
                 return round(res, 3)
+
             except (KeyError, IndexError, TypeError) as _error:
                 if self.data_error_logged:
-                    return GLOW_DATA_UNAVAILABLE
+                    return STATE_UNAVAILABLE
 
                 self.data_error_logged = True
                 _LOGGER.error("Glow API data error (%s): (%s)",
                               self.name, _error)
-                return GLOW_DATA_UNAVAILABLE
 
-        if not self.initialised:
-            return GLOW_STARTING
-
-        return None
+        return STATE_UNAVAILABLE
 
     @property
     def rawdata(self) -> Optional[str]:
@@ -213,7 +208,6 @@ class GlowUsage(SensorEntity):
             self._state = await self.hass.async_add_executor_job(
                 func, self.resource["resourceId"]
             )
-            self.initialised = True
 
         except InvalidAuth:
             _LOGGER.debug("calling auth failed 2")
@@ -282,7 +276,7 @@ class GlowStanding(GlowUsage):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self.backoff > 0:
-            return GLOW_DATA_UNAVAILABLE
+            return STATE_UNAVAILABLE
 
         plan = None
         if self._state is not None:
@@ -291,6 +285,7 @@ class GlowStanding(GlowUsage):
                 standing = plan["standingCharge"]
                 standing = float(standing) / 100
                 self.tariff_available = True
+                self.data_error_logged = False
                 return standing
 
             except (KeyError, IndexError, TypeError):
@@ -299,17 +294,10 @@ class GlowStanding(GlowUsage):
 
                 self.data_error_logged = True
 
-                if self.tariff_available:  # Has data ever been available?
-                    self.backoff = BACKOFF_HOUR
-                else:
+                if not self.tariff_available:  # Has data ever been available?
                     self.backoff = BACKOFF_DAY
 
-                return GLOW_DATA_UNAVAILABLE
-
-        if not self.initialised:
-            return GLOW_STARTING
-
-        return None
+        return STATE_UNAVAILABLE
 
     @property
     def device_class(self) -> str:
@@ -329,9 +317,10 @@ class GlowStanding(GlowUsage):
         if self.backoff > 1:
             self.backoff -= 1
             return
-        
+
         await self._glow_update(self.glow.current_tariff)
         self.backoff = 0
+
 
 class GlowRate(GlowStanding):
     """Sensor object for the Glowmarkt resource's current unit tariff."""
@@ -373,7 +362,7 @@ class GlowRate(GlowStanding):
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
         if self.buddy.backoff > 0:
-            return GLOW_DATA_UNAVAILABLE
+            return STATE_UNAVAILABLE
 
         plan = None
         if self._state is not None:
@@ -386,15 +375,11 @@ class GlowRate(GlowStanding):
 
             except (KeyError, IndexError, TypeError):
                 # The rate sensor will already have logged the error.
-                return GLOW_DATA_UNAVAILABLE
+                return STATE_UNAVAILABLE
 
-        if not self.initialised:
-            return GLOW_STARTING
-
-        return None
+        return STATE_UNAVAILABLE
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
         await asyncio.sleep(2)  # give standing rate sensor time to update
         self._state = self.buddy.rawdata
-        self.initialised = self.buddy.initialised
