@@ -3,7 +3,6 @@ import logging
 from datetime import datetime,timedelta
 from typing import Any, Callable, Dict, Optional
 import random
-from time import sleep
 import asyncio
 
 from homeassistant.components.sensor import (
