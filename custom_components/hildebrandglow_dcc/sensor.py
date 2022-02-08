@@ -19,7 +19,7 @@ from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=2)
+SCAN_INTERVAL = timedelta(minutes=30)
 
 
 async def async_setup_entry(
