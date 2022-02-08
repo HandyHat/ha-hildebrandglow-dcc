@@ -22,7 +22,7 @@ from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=1)
+SCAN_INTERVAL = timedelta(minutes=2)
 
 
 async def async_setup_entry(
@@ -200,14 +200,13 @@ class GlowUsage(SensorEntity):
     async def _glow_update(self, func: Callable) -> None:
         sleepdelay = (random.randint(0,120))
         minutes = datetime.now().minute
-        if (0 <= minutes <= 5) or (30 <= minutes <= 35):
+        if (0 <= minutes <= 2) or (30 <= minutes <= 32):
             _LOGGER.debug(f"Update time, sleeping {sleepdelay} before talking to API")
             await asyncio.sleep(sleepdelay)
             try:
                 self._state = await self.hass.async_add_executor_job(
                     func, self.resource["resourceId"]
                 )
-                await asyncio.sleep(300)
             except InvalidAuth:
                 _LOGGER.debug("calling auth failed 2")
                 await Glow.handle_failed_auth(self.config, self.hass)
