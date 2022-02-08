@@ -201,7 +201,7 @@ class GlowUsage(SensorEntity):
         sleepdelay = (random.randint(0,120))
         minutes = datetime.now().minute
         if (0 <= minutes <= 2) or (30 <= minutes <= 32):
-            _LOGGER.debug(f"Update time, sleeping {sleepdelay} before talking to API")
+            _LOGGER.debug(f"Update time, sleeping {sleepdelay}s before talking to API")
             await asyncio.sleep(sleepdelay)
             try:
                 self._state = await self.hass.async_add_executor_job(
