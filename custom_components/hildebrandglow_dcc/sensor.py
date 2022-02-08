@@ -198,6 +198,7 @@ class GlowUsage(SensorEntity):
         return None
 
     async def _glow_update(self, func: Callable) -> None:
+        """Get updated data from Glow"""
         sleepdelay = (random.randint(0,120))
         minutes = datetime.now().minute
         if (0 <= minutes <= 2) or (30 <= minutes <= 32):
@@ -210,10 +211,6 @@ class GlowUsage(SensorEntity):
             except InvalidAuth:
                 _LOGGER.debug("calling auth failed 2")
                 await Glow.handle_failed_auth(self.config, self.hass)
-        else:
-            _LOGGER.debug(f"Not time to update")
-        """Get updated data from Glow"""
-        
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
