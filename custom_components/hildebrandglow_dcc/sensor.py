@@ -198,7 +198,7 @@ class GlowUsage(SensorEntity):
 
     async def _glow_update(self, func: Callable) -> None:
         """Get updated data from Glow"""
-        sleepdelay = (random.randint(0, 120))
+        sleepdelay = (random.randint(60, 180))
         minutes = datetime.now().minute
         if (0 <= minutes <= 2) or (30 <= minutes <= 32):
             _LOGGER.debug(f"Update time, sleeping {sleepdelay}s before talking to API")
