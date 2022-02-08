@@ -1,7 +1,10 @@
 """Platform for sensor integration."""
 import logging
-from datetime import timedelta
+from datetime import datetime,timedelta
 from typing import Any, Callable, Dict, Optional
+import random
+from time import sleep
+import asyncio
 
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
@@ -19,7 +22,7 @@ from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=2)
+SCAN_INTERVAL = timedelta(minutes=1)
 
 
 async def async_setup_entry(
@@ -195,14 +198,23 @@ class GlowUsage(SensorEntity):
         return None
 
     async def _glow_update(self, func: Callable) -> None:
+        sleepdelay = (random.randint(0,120))
+        minutes = datetime.now().minute
+        if (0 <= minutes <= 5) or (30 <= minutes <= 35):
+            _LOGGER.debug(f"Update time, sleeping {sleepdelay} before talking to API")
+            await asyncio.sleep(sleepdelay)
+            try:
+                self._state = await self.hass.async_add_executor_job(
+                    func, self.resource["resourceId"]
+                )
+                await asyncio.sleep(300)
+            except InvalidAuth:
+                _LOGGER.debug("calling auth failed 2")
+                await Glow.handle_failed_auth(self.config, self.hass)
+        else:
+            _LOGGER.debug(f"Not time to update")
         """Get updated data from Glow"""
-        try:
-            self._state = await self.hass.async_add_executor_job(
-                func, self.resource["resourceId"]
-            )
-        except InvalidAuth:
-            _LOGGER.debug("calling auth failed 2")
-            await Glow.handle_failed_auth(self.config, self.hass)
+        
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
