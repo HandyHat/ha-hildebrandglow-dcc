@@ -206,7 +206,7 @@ class GlowUsage(SensorEntity):
         """Get updated data from Glow."""
         if self.initialised is True:
             minutes = datetime.now().minute
-            if not ((0 <= minutes <= 2) or (30 <= minutes <= 32)):
+            if not ((0 <= minutes <= 5) or (30 <= minutes <= 35)):
                 # only need to update one per every 30 minutes
                 # anything else Glow will ignore
                 return
