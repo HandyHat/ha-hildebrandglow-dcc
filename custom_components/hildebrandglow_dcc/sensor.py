@@ -209,17 +209,14 @@ class GlowUsage(SensorEntity):
             if not ((0 <= minutes <= 2) or (30 <= minutes <= 32)):
                 # only need to update one per every 30 minutes
                 # anything else Glow will ignore
-                _LOGGER.debug("Ignoring poll - outside time window")
                 return
 
         self.initialised = True
 
         try:
-            _LOGGER.debug("getting data")
             self._state = await self.hass.async_add_executor_job(
                 func, self.resource["resourceId"]
             )
-            _LOGGER.debug("got data")
 
         except InvalidAuth:
             _LOGGER.debug("calling auth failed 2")
