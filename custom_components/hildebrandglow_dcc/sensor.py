@@ -1,7 +1,7 @@
 """Platform for sensor integration."""
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 
 from homeassistant.components.sensor import (
@@ -20,8 +20,8 @@ from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=2)
-BACKOFF_DAY = 30 * 24  # Updates once every 2 minutes by default.
+SCAN_INTERVAL = timedelta(minutes=5)
+BACKOFF_DAY = 12 * 24  # 12 updates an hour
 
 
 async def async_setup_entry(
@@ -99,6 +99,7 @@ class GlowUsage(SensorEntity):
         self.config = config
         self.meter = None
         self.data_error_logged = False
+        self.initialised = False
 
     @property
     def unique_id(self) -> str:
@@ -183,8 +184,7 @@ class GlowUsage(SensorEntity):
                     return STATE_UNAVAILABLE
 
                 self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)",
-                              self.name, _error)
+                _LOGGER.error("Glow API data error (%s): (%s)", self.name, _error)
 
         return STATE_UNAVAILABLE
 
@@ -204,14 +204,27 @@ class GlowUsage(SensorEntity):
 
     async def _glow_update(self, func: Callable) -> None:
         """Get updated data from Glow."""
+        if self.initialised is True:
+            minutes = datetime.now().minute
+            if not ((0 <= minutes <= 2) or (30 <= minutes <= 32)):
+                # only need to update one per every 30 minutes
+                # anything else Glow will ignore
+                _LOGGER.debug("Ignoring poll - outside time window")
+                return
+
+        self.initialised = True
+
         try:
+            _LOGGER.debug("getting data")
             self._state = await self.hass.async_add_executor_job(
                 func, self.resource["resourceId"]
             )
+            _LOGGER.debug("got data")
 
         except InvalidAuth:
             _LOGGER.debug("calling auth failed 2")
             await Glow.handle_failed_auth(self.config, self.hass)
+            self.initialised = False  # reinitialise
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
@@ -357,6 +370,12 @@ class GlowRate(GlowStanding):
     def unit_of_measurement(self) -> Optional[str]:
         """Return the unit of measurement."""
         return "GBP/kWh"
+
+    @property
+    def device_class(self) -> str:
+        """Return None as the device class, as GBP/kWh
+        does not have a matching class."""
+        return None
 
     @property
     def state(self) -> Optional[str]:
