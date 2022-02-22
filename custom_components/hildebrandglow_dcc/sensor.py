@@ -1,6 +1,7 @@
 """Platform for sensor integration."""
+import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 
 from homeassistant.components.sensor import (
@@ -11,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.const import ENERGY_KILO_WATT_HOUR, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
@@ -19,7 +20,8 @@ from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=2)
+SCAN_INTERVAL = timedelta(minutes=5)
+BACKOFF_DAY = 12 * 24  # 12 updates an hour
 
 
 async def async_setup_entry(
@@ -87,6 +89,7 @@ async def async_setup_entry(
 class GlowUsage(SensorEntity):
     """Sensor object for the Glowmarkt resource's current consumption."""
 
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, glow: Glow, resource: Dict[str, Any], config: ConfigEntry):
         """Initialize the sensor."""
         self._attr_state_class = STATE_CLASS_TOTAL_INCREASING
@@ -96,6 +99,7 @@ class GlowUsage(SensorEntity):
         self.config = config
         self.meter = None
         self.data_error_logged = False
+        self.initialised = False
 
     @property
     def unique_id(self) -> str:
@@ -169,16 +173,20 @@ class GlowUsage(SensorEntity):
                 res = self._state["data"][0][1]
                 if self._state["units"] == "pence":
                     res = float(res) / 100.0
+                    self.data_error_logged = False
                     return round(res, 2)
+
+                self.data_error_logged = False
                 return round(res, 3)
+
             except (KeyError, IndexError, TypeError) as _error:
                 if self.data_error_logged:
-                    return None
+                    return STATE_UNAVAILABLE
+
                 self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)",
-                              self.name, _error)
-                return None
-        return None
+                _LOGGER.error("Glow API data error (%s): (%s)", self.name, _error)
+
+        return STATE_UNAVAILABLE
 
     @property
     def rawdata(self) -> Optional[str]:
@@ -195,17 +203,29 @@ class GlowUsage(SensorEntity):
         return None
 
     async def _glow_update(self, func: Callable) -> None:
-        """Get updated data from Glow"""
+        """Get updated data from Glow."""
+        if self.initialised is True:
+            minutes = datetime.now().minute
+            if not ((0 <= minutes <= 5) or (30 <= minutes <= 35)):
+                # only need to update one per every 30 minutes
+                # anything else Glow will ignore
+                return
+
+        self.initialised = True
+
         try:
             self._state = await self.hass.async_add_executor_job(
                 func, self.resource["resourceId"]
             )
+
         except InvalidAuth:
             _LOGGER.debug("calling auth failed 2")
             await Glow.handle_failed_auth(self.config, self.hass)
+            self.initialised = False  # reinitialise
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor.
+
         This is the only method that should fetch new data for Home Assistant.
         """
         await self._glow_update(self.glow.current_usage)
@@ -243,6 +263,8 @@ class GlowStanding(GlowUsage):
         """Initialize the sensor."""
         super().__init__(glow, resource, config)
         self._attr_state_class = STATE_CLASS_MEASUREMENT
+        self.backoff = 0
+        self.tariff_available = False
 
     @property
     def unique_id(self) -> str:
@@ -263,23 +285,29 @@ class GlowStanding(GlowUsage):
     @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
+        if self.backoff > 0:
+            return STATE_UNAVAILABLE
+
         plan = None
         if self._state is not None:
             try:
                 plan = self._state["data"][0]["currentRates"]
                 standing = plan["standingCharge"]
                 standing = float(standing) / 100
+                self.tariff_available = True
+                self.data_error_logged = False
                 return standing
 
-            except (KeyError, IndexError, TypeError) as _error:
-                if self.data_error_logged:
-                    return None
-                self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)",
-                              self.name, _error)
-                return None
+            except (KeyError, IndexError, TypeError):
+                if not self.data_error_logged:
+                    _LOGGER.warning("Glow API: Cannot find tariff data (%s)", self.name)
 
-        return None
+                self.data_error_logged = True
+
+                if not self.tariff_available:  # Has data ever been available?
+                    self.backoff = BACKOFF_DAY
+
+        return STATE_UNAVAILABLE
 
     @property
     def device_class(self) -> str:
@@ -296,7 +324,12 @@ class GlowStanding(GlowUsage):
 
         This is the only method that should fetch new data for Home Assistant.
         """
+        if self.backoff > 1:
+            self.backoff -= 1
+            return
+
         await self._glow_update(self.glow.current_tariff)
+        self.backoff = 0
 
 
 class GlowRate(GlowStanding):
@@ -336,8 +369,17 @@ class GlowRate(GlowStanding):
         return "GBP/kWh"
 
     @property
+    def device_class(self) -> str:
+        """Return None as the device class, as GBP/kWh
+        does not have a matching class."""
+        return None
+
+    @property
     def state(self) -> Optional[str]:
         """Return the state of the sensor."""
+        if self.buddy.backoff > 0:
+            return STATE_UNAVAILABLE
+
         plan = None
         if self._state is not None:
             try:
@@ -347,16 +389,13 @@ class GlowRate(GlowStanding):
 
                 return round(rate, 4)
 
-            except (KeyError, IndexError, TypeError) as _error:
-                if self.data_error_logged:
-                    return None
-                self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)",
-                              self.name, _error)
-                return None
+            except (KeyError, IndexError, TypeError):
+                # The rate sensor will already have logged the error.
+                return STATE_UNAVAILABLE
 
-        return None
+        return STATE_UNAVAILABLE
 
     async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
+        await asyncio.sleep(2)  # give standing rate sensor time to update
         self._state = self.buddy.rawdata
