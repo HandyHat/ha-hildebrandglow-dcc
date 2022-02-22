@@ -184,7 +184,8 @@ class GlowUsage(SensorEntity):
                     return STATE_UNAVAILABLE
 
                 self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)", self.name, _error)
+                _LOGGER.error("Glow API data error (%s): (%s)",
+                              self.name, _error)
 
         return STATE_UNAVAILABLE
 
@@ -300,7 +301,8 @@ class GlowStanding(GlowUsage):
 
             except (KeyError, IndexError, TypeError):
                 if not self.data_error_logged:
-                    _LOGGER.warning("Glow API: Cannot find tariff data (%s)", self.name)
+                    _LOGGER.warning(
+                        "Glow API: Cannot find tariff data (%s)", self.name)
 
                 self.data_error_logged = True
 
