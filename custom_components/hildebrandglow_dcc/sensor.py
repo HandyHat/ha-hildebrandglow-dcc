@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Optional
 
 from homeassistant.components.sensor import (
     DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_GAS,
     DEVICE_CLASS_MONETARY,
     STATE_CLASS_MEASUREMENT,
     STATE_CLASS_TOTAL_INCREASING,
@@ -159,7 +160,9 @@ class GlowUsage(SensorEntity):
     @property
     def device_class(self) -> str:
         """Return the device class."""
-        if self._state is not None and self._state["units"] == "kWh":
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
+            return DEVICE_CLASS_GAS
+        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
             return DEVICE_CLASS_ENERGY
         if self._state is not None and self._state["units"] == "pence":
             return DEVICE_CLASS_MONETARY
