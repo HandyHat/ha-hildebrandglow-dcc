@@ -1,4 +1,4 @@
 autopep8==1.6.0
 homeassistant
-isort==5.10.1
+isort==5.11.4
 pylint==2.15.5
