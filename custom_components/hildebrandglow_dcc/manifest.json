@@ -1,10 +1,16 @@
 {
   "domain": "hildebrandglow_dcc",
   "name": "Hildebrand Glow (DCC)",
+  "integration_type": "hub",
   "config_flow": true,
   "documentation": "https://github.com/HandyHat/ha-hildebrandglow-dcc",
   "issue_tracker": "https://github.com/HandyHat/ha-hildebrandglow-dcc/issues",
-  "codeowners": ["@handyhat"],
+  "requirements": [
+    "pyglowmarkt==0.5.4"
+  ],
+  "codeowners": [
+    "@HandyHat"
+  ],
   "iot_class": "cloud_polling",
-  "version": "0.6.0"
+  "version": "1.0.0"
 }
