@@ -4,19 +4,19 @@
             "already_configured": "Device is already configured"
         },
         "error": {
-            "cannot_connect": "Failed to connect, please try again",
-            "invalid_auth": "Unable to authenticate.",
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "timeout_connect": "Timeout establishing connection",
             "unknown": "Unexpected error"
         },
         "step": {
             "user": {
                 "data": {
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Email"
                 },
-                "title": "Hildebrand Glow API access"
+                "title": "Hildebrand Glow (DCC) API access"
             }
         }
-    },
-    "title": "Hildebrand Glow"
+    }
 }
