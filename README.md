@@ -73,11 +73,11 @@ python -m venv dev-venv
 You can then install the dependencies that will allow you to develop:
 `pip3 install -r requirements-dev.txt`
 
-This will install `homeassistant`, `autopep8`, `isort` and `pylint`.
+This will install `homeassistant`, `black`, `isort` and `pylint`.
 
 ### Code Style
 
-This project makes use of isort, pylint and autopep8 to enforce a consistent code style across the codebase.
+This project makes use of black, isort and pylint to enforce a consistent code style across the codebase.
 
 ## Credits
 
