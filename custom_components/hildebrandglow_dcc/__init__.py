@@ -20,6 +20,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Hildebrand Glow (DCC) from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+    # Authenticate with the API
     try:
         glowmarkt = await hass.async_add_executor_job(
             BrightClient, entry.data["username"], entry.data["password"]
@@ -33,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     else:
         _LOGGER.debug("Successful Post to %sauth", glowmarkt.url)
 
+    # Set API object
     hass.data[DOMAIN][entry.entry_id] = glowmarkt
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
