@@ -1,4 +1,6 @@
-autopep8==1.6.0
+aiohttp==3.8.3
+black==22.12.0
 homeassistant
-isort==5.10.1
-pylint==2.15.5
+isort==5.11.4
+pyglowmarkt==0.5.4
+pylint==2.15.9

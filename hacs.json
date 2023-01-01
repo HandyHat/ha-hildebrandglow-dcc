@@ -1,7 +1,6 @@
 {
     "name": "Hildebrand Glow (DCC)",
     "render_readme": true,
-    "domains": ["sensor"],
     "country": ["GB"],
-    "homeassistant": "2021.9.0"
+    "homeassistant": "2022.12.0"
   }

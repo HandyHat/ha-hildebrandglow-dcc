@@ -1,403 +1,470 @@
 """Platform for sensor integration."""
-import asyncio
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import datetime, time, timedelta
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+
+from glowmarkt import BrightClient
+import requests
 
 from homeassistant.components.sensor import (
-    DEVICE_CLASS_ENERGY,
-    DEVICE_CLASS_MONETARY,
-    STATE_CLASS_MEASUREMENT,
-    STATE_CLASS_TOTAL_INCREASING,
+    SensorDeviceClass,
     SensorEntity,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ENERGY_KILO_WATT_HOUR, STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant
+from homeassistant.const import UnitOfEnergy
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
 from .const import DOMAIN
-from .glow import Glow, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
-
 SCAN_INTERVAL = timedelta(minutes=5)
-BACKOFF_DAY = 12 * 24  # 12 updates an hour
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, config: ConfigEntry, async_add_entities: Callable
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> bool:
     """Set up the sensor platform."""
-    # pylint: disable=too-many-locals
-    new_entities = []
+    entities = []
+    meters = {}
 
-    cost_classifiers = [
-        "gas.consumption.cost",
-        "electricity.consumption.cost",
-    ]
-    meter_classifiers = [
-        "gas.consumption",
-        "electricity.consumption",
-    ]
+    # Get API object from the config flow
+    glowmarkt = hass.data[DOMAIN][entry.entry_id]
 
-    for entry in hass.data[DOMAIN]:
-        glow = hass.data[DOMAIN][entry]
+    # Gather all virtual entities on the account
+    virtual_entities: dict = {}
+    try:
+        virtual_entities = await hass.async_add_executor_job(
+            glowmarkt.get_virtual_entities
+        )
+    except requests.Timeout as ex:
+        _LOGGER.error("Timeout: %s", ex)
+    except requests.exceptions.ConnectionError as ex:
+        _LOGGER.error("Cannot connect: %s", ex)
+    # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
+    except Exception as ex:  # pylint: disable=broad-except
+        _LOGGER.exception("Unexpected exception: %s", ex)
+    _LOGGER.debug("Successful GET to %svirtualentity", glowmarkt.url)
 
+    for virtual_entity in virtual_entities:
+        # Gather all resources for each virtual entity
         resources: dict = {}
-        meters = {}
-
         try:
-            resources = await hass.async_add_executor_job(glow.retrieve_resources)
-        except InvalidAuth:
-            try:
-                _LOGGER.debug("calling auth failed")
-                await Glow.handle_failed_auth(config, hass)
-            except InvalidAuth:
-                return False
+            resources = await hass.async_add_executor_job(virtual_entity.get_resources)
+        except requests.Timeout as ex:
+            _LOGGER.error("Timeout: %s", ex)
+        except requests.exceptions.ConnectionError as ex:
+            _LOGGER.error("Cannot connect: %s", ex)
+        # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
+        except Exception as ex:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception: %s", ex)
+        _LOGGER.debug(
+            "Successful GET to %svirtualentity/%s/resources",
+            glowmarkt.url,
+            virtual_entity.id,
+        )
 
-            glow = hass.data[DOMAIN][entry]
-            resources = await hass.async_add_executor_job(glow.retrieve_resources)
-
+        # Loop through all resources and create sensors
         for resource in resources:
-            if resource["classifier"] in meter_classifiers:
-                base_sensor = GlowUsage(glow, resource, config)
-                new_entities.append(base_sensor)
-                meters[resource["classifier"]] = base_sensor
+            if resource.classifier in ["electricity.consumption", "gas.consumption"]:
+                usage_sensor = Usage(hass, resource, virtual_entity, entry)
+                entities.append(usage_sensor)
+                # Save the usage sensor as a meter so that the cost sensor can reference it
+                meters[resource.classifier] = usage_sensor
 
-                cumulative_sensor = GlowCumulative(glow, resource, config)
-                new_entities.append(cumulative_sensor)
+                # Standing and Rate sensors are handled by the coordinator
+                coordinator = TariffCoordinator(hass, glowmarkt, resource, entry)
+                await coordinator.async_config_entry_first_refresh()
+                standing_sensor = Standing(coordinator, resource, virtual_entity)
+                entities.append(standing_sensor)
+                rate_sensor = Rate(coordinator, resource, virtual_entity)
+                entities.append(rate_sensor)
 
-                rate_sensor = GlowStanding(glow, resource, config)
-                new_entities.append(rate_sensor)
-                tariff_sensor = GlowRate(glow, resource, config, rate_sensor)
-                new_entities.append(tariff_sensor)
-
+        # Cost sensors must be created after usage sensors as they reference them as a meter
         for resource in resources:
-            if resource["classifier"] in cost_classifiers:
-                sensor = GlowUsage(glow, resource, config)
-                if resource["classifier"] == "gas.consumption.cost":
-                    sensor.meter = meters["gas.consumption"]
-                else:
-                    sensor.meter = meters["electricity.consumption"]
-                new_entities.append(sensor)
+            if resource.classifier == "gas.consumption.cost":
+                cost_sensor = Cost(hass, resource, virtual_entity, entry)
+                cost_sensor.meter = meters["gas.consumption"]
+                entities.append(cost_sensor)
+            elif resource.classifier == "electricity.consumption.cost":
+                cost_sensor = Cost(hass, resource, virtual_entity, entry)
+                cost_sensor.meter = meters["electricity.consumption"]
+                entities.append(cost_sensor)
 
-        async_add_entities(new_entities)
+    # Get data for all entities on initial startup
+    async_add_entities(entities, update_before_add=True)
 
     return True
 
 
-class GlowUsage(SensorEntity):
-    """Sensor object for the Glowmarkt resource's current consumption."""
+def device_name(resource, virtual_entity) -> str:
+    """Return device name. Includes name of virtual entity if it exists."""
+    if "electricity.consumption" in resource.classifier:
+        supply_type = "electricity"
+    elif "gas.consumption" in resource.classifier:
+        supply_type = "gas"
+    # First letter of device name should be capitalised
+    if virtual_entity.name is not None:
+        name = f"{virtual_entity.name} smart {supply_type} meter"
+    else:
+        name = f"Smart {supply_type} meter"
+    return name
 
-    # pylint: disable=too-many-instance-attributes
-    def __init__(self, glow: Glow, resource: Dict[str, Any], config: ConfigEntry):
-        """Initialize the sensor."""
-        self._attr_state_class = STATE_CLASS_TOTAL_INCREASING
-        self._state: Optional[Dict[str, Any]] = None
-        self.glow = glow
-        self.resource = resource
-        self.config = config
-        self.meter = None
-        self.data_error_logged = False
-        self.initialised = False
 
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"]
+async def should_update() -> bool:
+    """Check if time is between 0-5 or 30-35 minutes past the hour."""
+    minutes = datetime.now().minute
+    if (0 <= minutes <= 5) or (30 <= minutes <= 35):
+        return True
+    return False
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        if self.resource["classifier"] == "gas.consumption":
-            return "Gas Consumption (Today)"
-        if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Consumption (Today)"
-        if self.resource["classifier"] == "electricity.consumption.cost":
-            return "Electric Cost (Today)"
-        if self.resource["classifier"] == "gas.consumption.cost":
-            return "Gas Cost (Today)"
 
-        return None
+async def daily_data(self) -> float:
+    """Get daily usage from the API."""
+    # If it's before 00:36, we need to fetch yesterday's data
+    if datetime.now().time() <= time(0, 35):
+        _LOGGER.debug("Fetching yesterday's data")
+        now = datetime.now() - timedelta(days=1)
+    else:
+        now = datetime.now()
+    # Round to the day to set time to 00:00:00
+    t_from = await self.hass.async_add_executor_job(self.resource.round, now, "P1D")
+    # Round to the minute
+    t_to = await self.hass.async_add_executor_job(self.resource.round, now, "PT1M")
 
-    @property
-    def icon(self) -> Optional[str]:
-        """Icon to use in the frontend, if any."""
-        icon = ""
-        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            icon = "mdi:flash"
-        if self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-            icon = "mdi:fire"
-        if self.device_class == DEVICE_CLASS_MONETARY:
-            icon = "mdi:cash"
-
-        return icon
-
-    @property
-    def device_info(self) -> Optional[Dict[str, Any]]:
-        """Return information about the sensor data source."""
-        if self.resource["dataSourceResourceTypeInfo"]["type"] == "ELEC":
-            human_type = "Electricity"
-        elif self.resource["dataSourceResourceTypeInfo"]["type"] == "GAS":
-            human_type = "Gas"
-        else:
-            _err = self.resource["dataSourceResourceTypeInfo"]["type"]
-            _LOGGER.debug("Unknown type: %s", _err)
-
-        if self.meter:
-            resource = self.meter.resource["resourceId"]
-        else:
-            resource = self.resource["resourceId"]
-
-        return {
-            "identifiers": {(DOMAIN, resource)},
-            "manufacturer": "Hildebrand",
-            "model": "Glow",
-            "name": f"Smart {human_type} Meter",
-        }
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class."""
-        if self._state is not None and self._state["units"] == "kWh":
-            return DEVICE_CLASS_ENERGY
-        if self._state is not None and self._state["units"] == "pence":
-            return DEVICE_CLASS_MONETARY
-        return None
-
-    @property
-    def state(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        if self._state is not None:
+    # Tell Hildebrand to pull latest DCC data
+    try:
+        await self.hass.async_add_executor_job(self.resource.catchup)
+    except requests.Timeout as ex:
+        _LOGGER.error("Timeout: %s", ex)
+    except requests.exceptions.ConnectionError as ex:
+        _LOGGER.error("Cannot connect: %s", ex)
+    # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
+    except Exception as ex:  # pylint: disable=broad-except
+        if "Request failed" in str(ex):
+            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
+            await refresh_token(self)
             try:
-                res = self._state["data"][0][1]
-                if self._state["units"] == "pence":
-                    res = float(res) / 100.0
-                    self.data_error_logged = False
-                    return round(res, 2)
+                await self.hass.async_add_executor_job(self.resource.catchup)
+            except requests.Timeout as secondary_ex:
+                _LOGGER.error("Timeout: %s", secondary_ex)
+            except requests.exceptions.ConnectionError as secondary_ex:
+                _LOGGER.error("Cannot connect: %s", secondary_ex)
+            except Exception as secondary_ex:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception: %s", secondary_ex)
+        else:
+            _LOGGER.exception("Unexpected exception: %s", ex)
+    _LOGGER.debug(
+        "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
+        self.resource.id,
+    )
 
-                self.data_error_logged = False
-                return round(res, 3)
-
-            except (KeyError, IndexError, TypeError) as _error:
-                if self.data_error_logged:
-                    return STATE_UNAVAILABLE
-
-                self.data_error_logged = True
-                _LOGGER.error("Glow API data error (%s): (%s)",
-                              self.name, _error)
-
-        return STATE_UNAVAILABLE
-
-    @property
-    def rawdata(self) -> Optional[str]:
-        """Return the raw state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self) -> Optional[str]:
-        """Return the unit of measurement."""
-        if self._state is not None and self._state["units"] == "kWh":
-            return ENERGY_KILO_WATT_HOUR
-        if self._state is not None and self._state["units"] == "pence":
-            return "GBP"
-        return None
-
-    async def _glow_update(self, func: Callable) -> None:
-        """Get updated data from Glow."""
-        if self.initialised is True:
-            minutes = datetime.now().minute
-            if not ((0 <= minutes <= 5) or (30 <= minutes <= 35)):
-                # only need to update one per every 30 minutes
-                # anything else Glow will ignore
-                return
-
-        self.initialised = True
-
-        try:
-            self._state = await self.hass.async_add_executor_job(
-                func, self.resource["resourceId"]
-            )
-
-        except InvalidAuth:
-            _LOGGER.debug("calling auth failed 2")
-            await Glow.handle_failed_auth(self.config, self.hass)
-            self.initialised = False  # reinitialise
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        await self._glow_update(self.glow.current_usage)
-
-
-class GlowCumulative(GlowUsage):
-    """Sensor object for the Glowmarkt resource's current yearly consumption."""
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"] + "-cumulative"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        if self.resource["classifier"] == "gas.consumption":
-            return "Gas Consumption (Year)"
-        if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Consumption (Year)"
-        return None
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        await self._glow_update(self.glow.cumulative_usage)
-
-
-class GlowStanding(GlowUsage):
-    """Sensor object for the Glowmarkt resource's standing tariff."""
-
-    def __init__(self, glow: Glow, resource: Dict[str, Any], config: ConfigEntry):
-        """Initialize the sensor."""
-        super().__init__(glow, resource, config)
-        self._attr_state_class = STATE_CLASS_MEASUREMENT
-        self.backoff = 0
-        self.tariff_available = False
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"] + "-tariff"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        if self.resource["classifier"] == "gas.consumption":
-            return "Gas Tariff Standing"
-
-        if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Tariff Standing"
-
-        return None
-
-    @property
-    def state(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        if self.backoff > 0:
-            return STATE_UNAVAILABLE
-
-        plan = None
-        if self._state is not None:
+    try:
+        readings = await self.hass.async_add_executor_job(
+            self.resource.get_readings, t_from, t_to, "P1D", "sum", True
+        )
+    except requests.Timeout as ex:
+        _LOGGER.error("Timeout: %s", ex)
+    except requests.exceptions.ConnectionError as ex:
+        _LOGGER.error("Cannot connect: %s", ex)
+    # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
+    except Exception as ex:  # pylint: disable=broad-except
+        if "Request failed" in str(ex):
+            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
+            await refresh_token(self)
             try:
-                plan = self._state["data"][0]["currentRates"]
-                standing = plan["standingCharge"]
-                standing = float(standing) / 100
-                self.tariff_available = True
-                self.data_error_logged = False
-                return standing
-
-            except (KeyError, IndexError, TypeError):
-                if not self.data_error_logged:
-                    _LOGGER.warning(
-                        "Glow API: Cannot find tariff data (%s)", self.name)
-
-                self.data_error_logged = True
-
-                if not self.tariff_available:  # Has data ever been available?
-                    self.backoff = BACKOFF_DAY
-
-        return STATE_UNAVAILABLE
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class."""
-        return DEVICE_CLASS_MONETARY
-
-    @property
-    def unit_of_measurement(self) -> Optional[str]:
-        """Return the unit of measurement."""
-        return "GBP"
-
-    async def async_update(self) -> None:
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        if self.backoff > 1:
-            self.backoff -= 1
-            return
-
-        await self._glow_update(self.glow.current_tariff)
-        self.backoff = 0
+                readings = await self.hass.async_add_executor_job(
+                    self.resource.get_readings, t_from, t_to, "P1D", "sum", True
+                )
+            except requests.Timeout as secondary_ex:
+                _LOGGER.error("Timeout: %s", secondary_ex)
+            except requests.exceptions.ConnectionError as secondary_ex:
+                _LOGGER.error("Cannot connect: %s", secondary_ex)
+            except Exception as secondary_ex:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception: %s", secondary_ex)
+        else:
+            _LOGGER.exception("Unexpected exception: %s", ex)
+    _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
+    return readings[0][1].value
 
 
-class GlowRate(GlowStanding):
-    """Sensor object for the Glowmarkt resource's current unit tariff."""
+async def tariff_data(self) -> float:
+    """Get tariff data from the API."""
+    try:
+        tariff = await self.hass.async_add_executor_job(self.resource.get_tariff)
+    except requests.Timeout as ex:
+        _LOGGER.error("Timeout: %s", ex)
+    except requests.exceptions.ConnectionError as ex:
+        _LOGGER.error("Cannot connect: %s", ex)
+    # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
+    except Exception as ex:  # pylint: disable=broad-except
+        if "Request failed" in str(ex):
+            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
+            await refresh_token(self)
+            try:
+                tariff = await self.hass.async_add_executor_job(
+                    self.resource.get_tariff
+                )
+            except requests.Timeout as secondary_ex:
+                _LOGGER.error("Timeout: %s", secondary_ex)
+            except requests.exceptions.ConnectionError as secondary_ex:
+                _LOGGER.error("Cannot connect: %s", secondary_ex)
+            except Exception as secondary_ex:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception: %s", secondary_ex)
+        else:
+            _LOGGER.exception("Unexpected exception: %s", ex)
+    _LOGGER.debug(
+        "Successful GET to %sresource/%s/tariff",
+        self.glowmarkt.url,
+        self.resource.id,
+    )
+    return tariff
+
+
+async def refresh_token(self):
+    """Refresh the glowmarkt API token"""
+    try:
+        glowmarkt = await self.hass.async_add_executor_job(
+            BrightClient, self.entry.data["username"], self.entry.data["password"]
+        )
+    except requests.Timeout as ex:
+        raise ConfigEntryNotReady(f"Timeout: {ex}") from ex
+    except requests.exceptions.ConnectionError as ex:
+        raise ConfigEntryNotReady(f"Cannot connect: {ex}") from ex
+    except Exception as ex:  # pylint: disable=broad-except
+        raise ConfigEntryNotReady(f"Unexpected exception: {ex}") from ex
+    else:
+        _LOGGER.debug("Successful Post to %sauth", glowmarkt.url)
+
+    # Set API object
+    self.hass.data[DOMAIN][self.entry.entry_id] = glowmarkt
+
+
+class Usage(SensorEntity):
+    """Sensor object for daily usage."""
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_has_entity_name = True
+    _attr_name = "Usage (today)"
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     def __init__(
-        self,
-        glow: Glow,
-        resource: Dict[str, Any],
-        config: ConfigEntry,
-        buddy: GlowStanding,
-    ):
+        self, hass: HomeAssistant, resource, virtual_entity, entry: ConfigEntry
+    ) -> None:
         """Initialize the sensor."""
-        super().__init__(glow, resource, config)
+        self._attr_unique_id = resource.id
 
-        self.buddy = buddy
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier string for the sensor."""
-        return self.resource["resourceId"] + "-rate"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        if self.resource["classifier"] == "gas.consumption":
-            return "Gas Tariff Rate"
-
-        if self.resource["classifier"] == "electricity.consumption":
-            return "Electric Tariff Rate"
-
-        return None
+        self.entry = entry
+        self.hass = hass
+        self.initialised = False
+        self.resource = resource
+        self.virtual_entity = virtual_entity
 
     @property
-    def unit_of_measurement(self) -> Optional[str]:
-        """Return the unit of measurement."""
-        return "GBP/kWh"
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.resource.id)},
+            manufacturer="Hildebrand",
+            model="Glow (DCC)",
+            name=device_name(self.resource, self.virtual_entity),
+        )
 
     @property
-    def device_class(self) -> str:
-        """Return None as the device class, as GBP/kWh
-        does not have a matching class."""
-        return None
-
-    @property
-    def state(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        if self.buddy.backoff > 0:
-            return STATE_UNAVAILABLE
-
-        plan = None
-        if self._state is not None:
-            try:
-                plan = self._state["data"][0]["currentRates"]
-                rate = plan["rate"]
-                rate = float(rate) / 100
-
-                return round(rate, 4)
-
-            except (KeyError, IndexError, TypeError):
-                # The rate sensor will already have logged the error.
-                return STATE_UNAVAILABLE
-
-        return STATE_UNAVAILABLE
+    def icon(self) -> str | None:
+        """Icon to use in the frontend."""
+        # Only the gas usage sensor needs an icon as the others inherit from their device class
+        if self.resource.classifier == "gas.consumption":
+            return "mdi:fire"
 
     async def async_update(self) -> None:
-        """Fetch new state data for the sensor."""
-        await asyncio.sleep(2)  # give standing rate sensor time to update
-        self._state = self.buddy.rawdata
+        """Fetch new data for the sensor."""
+        # Get data on initial startup
+        if not self.initialised:
+            value = await daily_data(self)
+            self._attr_native_value = round(value, 2)
+            self.initialised = True
+        else:
+            # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
+            if await should_update():
+                value = await daily_data(self)
+                self._attr_native_value = round(value, 2)
+
+
+class Cost(SensorEntity):
+    """Sensor usage for daily cost."""
+
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_has_entity_name = True
+    _attr_name = "Cost (today)"
+    _attr_native_unit_of_measurement = "GBP"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self, hass: HomeAssistant, resource, virtual_entity, entry: ConfigEntry
+    ) -> None:
+        """Initialize the sensor."""
+        self._attr_unique_id = resource.id
+
+        self.entry = entry
+        self.hass = hass
+        self.initialised = False
+        self.meter = None
+        self.resource = resource
+        self.virtual_entity = virtual_entity
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            # Get the identifier from the meter so that the cost sensors have the same device
+            identifiers={(DOMAIN, self.meter.resource.id)},
+            manufacturer="Hildebrand",
+            model="Glow (DCC)",
+            name=device_name(self.resource, self.virtual_entity),
+        )
+
+    async def async_update(self) -> None:
+        """Fetch new data for the sensor."""
+        if not self.initialised:
+            value = await daily_data(self) / 100
+            self._attr_native_value = round(value, 2)
+            self.initialised = True
+        else:
+            # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
+            if await should_update():
+                value = await daily_data(self) / 100
+                self._attr_native_value = round(value, 2)
+
+
+class TariffCoordinator(DataUpdateCoordinator):
+    """Data update coordinator for the tariff sensors."""
+
+    def __init__(self, hass: HomeAssistant, glowmarkt, resource, entry: ConfigEntry):
+        """Initialize tariff coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            # Name of the data. For logging purposes.
+            name="tariff",
+            # Polling interval. Will only be polled if there are subscribers.
+            update_interval=timedelta(minutes=5),
+        )
+        self.entry = entry
+        self.glowmarkt = glowmarkt
+        self.initialised = False
+        self.resource = resource
+
+    async def _async_update_data(self):
+        """Fetch data from tariff API endpoint."""
+        if not self.initialised:
+            return await tariff_data(self)
+        # Only poll when updated data might be available
+        if await should_update():
+            return await tariff_data(self)
+        # Return cached data if no update is required
+        return self.data
+
+
+class Standing(CoordinatorEntity, SensorEntity):
+    """An entity using CoordinatorEntity.
+
+    The CoordinatorEntity class provides:
+      should_poll
+      async_update
+      async_added_to_hass
+      available
+
+    """
+
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_has_entity_name = True
+    _attr_name = "Standing charge"
+    _attr_native_unit_of_measurement = "GBP"
+    _attr_entity_registry_enabled_default = (
+        False  # Don't enable by default as less commonly used
+    )
+
+    def __init__(self, coordinator, resource, virtual_entity):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+
+        self._attr_unique_id = resource.id + "-tariff"
+
+        self.resource = resource
+        self.virtual_entity = virtual_entity
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        value = float(self.coordinator.data.current_rates.standing_charge.value) / 100
+        self._attr_native_value = round(value, 4)
+        self.async_write_ha_state()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.resource.id)},
+            manufacturer="Hildebrand",
+            model="Glow (DCC)",
+            name=device_name(self.resource, self.virtual_entity),
+        )
+
+
+class Rate(CoordinatorEntity, SensorEntity):
+    """An entity using CoordinatorEntity.
+
+    The CoordinatorEntity class provides:
+      should_poll
+      async_update
+      async_added_to_hass
+      available
+
+    """
+
+    _attr_device_class = None
+    _attr_has_entity_name = True
+    _attr_icon = (
+        "mdi:cash-multiple"  # Need to provide an icon as doesn't have a device class
+    )
+    _attr_name = "Rate"
+    _attr_native_unit_of_measurement = "GBP/kWh"
+    _attr_entity_registry_enabled_default = (
+        False  # Don't enable by default as less commonly used
+    )
+
+    def __init__(self, coordinator, resource, virtual_entity):
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+
+        self._attr_unique_id = resource.id + "-rate"
+
+        self.resource = resource
+        self.virtual_entity = virtual_entity
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        value = float(self.coordinator.data.current_rates.rate.value) / 100
+        self._attr_native_value = round(value, 4)
+        self.async_write_ha_state()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.resource.id)},
+            manufacturer="Hildebrand",
+            model="Glow (DCC)",
+            name=device_name(self.resource, self.virtual_entity),
+        )

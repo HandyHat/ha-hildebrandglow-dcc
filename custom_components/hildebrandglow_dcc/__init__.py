@@ -1,51 +1,51 @@
-"""The Hildebrand Glow integration."""
-import asyncio
-from typing import Any, Dict
+"""The Hildebrand Glow (DCC) integration."""
+from __future__ import annotations
 
-import voluptuous as vol
+import logging
+
+from glowmarkt import BrightClient
+import requests
+
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 
-from .const import APP_ID, DOMAIN
-from .glow import Glow
+from .const import DOMAIN
 
-CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
+_LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
-
-
-async def async_setup(hass: HomeAssistant, _unused: Dict[str, Any]) -> bool:
-    """Set up the Hildebrand Glow component."""
-    hass.data[DOMAIN] = {}
-
-    return True
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Hildebrand Glow from a config entry."""
-    glow = Glow(APP_ID, entry.data["token"])
-    hass.data[DOMAIN][entry.entry_id] = glow
-
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
+    """Set up Hildebrand Glow (DCC) from a config entry."""
+    hass.data.setdefault(DOMAIN, {})
+    # Authenticate with the API
+    try:
+        glowmarkt = await hass.async_add_executor_job(
+            BrightClient, entry.data["username"], entry.data["password"]
         )
+    except requests.Timeout as ex:
+        raise ConfigEntryNotReady(f"Timeout: {ex}") from ex
+    except requests.exceptions.ConnectionError as ex:
+        raise ConfigEntryNotReady(f"Cannot connect: {ex}") from ex
+    except Exception as ex:  # pylint: disable=broad-except
+        raise ConfigEntryNotReady(f"Unexpected exception: {ex}") from ex
+    else:
+        _LOGGER.debug("Successful Post to %sauth", glowmarkt.url)
+
+    # Set API object
+    hass.data[DOMAIN][entry.entry_id] = glowmarkt
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(
-                    entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
-    if unload_ok:
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
