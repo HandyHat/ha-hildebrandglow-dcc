@@ -129,8 +129,9 @@ async def should_update() -> bool:
 
 async def daily_data(self) -> float:
     """Get daily usage from the API."""
-    # If it's before 00:36, we need to fetch yesterday's data
-    if datetime.now().time() <= time(0, 35):
+    # If it's before 01:06, we need to fetch yesterday's data
+    # This should only need to be before 00:36 but gas data appears to be 30 minutes behind electricity data
+    if datetime.now().time() <= time(1, 5):
         _LOGGER.debug("Fetching yesterday's data")
         now = datetime.now() - timedelta(days=1)
     else:
