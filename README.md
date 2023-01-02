@@ -9,7 +9,7 @@ Home Assistant integration for energy consumption data from UK SMETS (Smart) met
 
 This integration works without requiring a consumer device provided by Hildebrand Glow and can work with your existing smart meter. You'll need to set up your smart meter for free in the Bright app on [Android](https://play.google.com/store/apps/details?id=uk.co.hildebrand.brightionic&hl=en_GB) or [iOS](https://apps.apple.com/gb/app/bright/id1369989022). This will only work when using the Data Communications Company (DCC) backend, which all [SMETS 2 meters](https://www.smartme.co.uk/smets-2.html) and some [SMETS 1 meters](https://www.smartme.co.uk/smets-1.html) do. Once you can see your data in the app, you are good to go.
 
-The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will technically work with their hardware, you should instead use the MQTT version [here](https://github.com/unlobito/ha-hildebrandglow/) to get real-time consumption data.
+The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will technically work with their hardware, you should instead use the [Local MQTT integration](https://github.com/megakid/ha_hildebrand_glow_ihd_mqtt) or the [Cloud MQTT integration](https://github.com/unlobito/ha-hildebrandglow/) to get real-time consumption data.
 
 ## Installation
 
