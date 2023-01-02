@@ -212,6 +212,13 @@ async def tariff_data(self) -> float:
     """Get tariff data from the API."""
     try:
         tariff = await self.hass.async_add_executor_job(self.resource.get_tariff)
+    except UnboundLocalError:
+        supply = supply_type(self.resource)
+        _LOGGER.warning(
+            "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors.",
+            supply,
+            self.resource.id,
+        )
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -224,6 +231,13 @@ async def tariff_data(self) -> float:
             try:
                 tariff = await self.hass.async_add_executor_job(
                     self.resource.get_tariff
+                )
+            except UnboundLocalError:
+                supply = supply_type(self.resource)
+                _LOGGER.warning(
+                    "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors.",
+                    supply,
+                    self.resource.id,
                 )
             except requests.Timeout as secondary_ex:
                 _LOGGER.error("Timeout: %s", secondary_ex)
@@ -242,12 +256,6 @@ async def tariff_data(self) -> float:
     )
     if tariff:
         return tariff
-    supply = supply_type(self.resource)
-    _LOGGER.warning(
-        "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors.",
-        supply,
-        self.resource.id,
-    )
 
 
 async def refresh_token(self):
