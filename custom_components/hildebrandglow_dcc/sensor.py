@@ -227,7 +227,9 @@ async def tariff_data(self) -> float:
         self.glowmarkt.url,
         self.resource.id,
     )
-    return tariff
+    if tariff:
+        return tariff
+    _LOGGER.warning("No tariff data found. If you don't see tariff data in the Bright app, please disable the rate and standing charge sensors.")
 
 
 async def refresh_token(self):
@@ -368,12 +370,11 @@ class TariffCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Fetch data from tariff API endpoint."""
         if not self.initialised:
+            self.initialised = True
             return await tariff_data(self)
         # Only poll when updated data might be available
         if await should_update():
             return await tariff_data(self)
-        # Return cached data if no update is required
-        return self.data
 
 
 class Standing(CoordinatorEntity, SensorEntity):
