@@ -9,7 +9,7 @@ Home Assistant integration for energy consumption data from UK SMETS (Smart) met
 
 This integration works without requiring a consumer device provided by Hildebrand Glow and can work with your existing smart meter. You'll need to set up your smart meter for free in the Bright app on [Android](https://play.google.com/store/apps/details?id=uk.co.hildebrand.brightionic&hl=en_GB) or [iOS](https://apps.apple.com/gb/app/bright/id1369989022). This will only work when using the Data Communications Company (DCC) backend, which all [SMETS 2 meters](https://www.smartme.co.uk/smets-2.html) and some [SMETS 1 meters](https://www.smartme.co.uk/smets-1.html) do. Once you can see your data in the app, you are good to go.
 
-The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will technically work with their hardware, you should instead use the [Local MQTT integration](https://github.com/megakid/ha_hildebrand_glow_ihd_mqtt) or the [Cloud MQTT integration](https://github.com/unlobito/ha-hildebrandglow/) to get real-time consumption data.
+The data provided will be delayed by around 30 minutes. To get real-time consumption data, you can buy [Hildebrand Glow hardware](https://shop.glowmarkt.com/). Although this integration will technically work with their hardware, you should instead use the [Local MQTT integration](https://github.com/megakid/ha_hildebrand_glow_ihd_mqtt) or the [Cloud MQTT integration](https://github.com/unlobito/ha-hildebrandglow/) to get real-time consumption data which is not delayed.
 
 ## Installation
 
@@ -21,7 +21,7 @@ You can install this component through [HACS](https://hacs.xyz/) to easily recei
 
 <details>
   <summary>Manually add to HACS</summary>
-  Visit the HACS Integrations pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories/). You'll then be able to install it through the Integrations pane.
+  Visit the HACS Integrations pane and add <code>https://github.com/HandyHat/ha-hildebrandglow-dcc</code> as an <code>Integration</code> by following <a href=https://hacs.xyz/docs/faq/custom_repositories>these instructions</a>. You'll then be able to install it through the <i>Integrations</i> pane.
 </details>
 
 ### Manual installation
@@ -41,7 +41,7 @@ Then, add the integration:
 
 <details>
   <summary>Manually add the Integration</summary>
-  Visit the Integrations section in Home Assistant and click the add button in the bottom right corner. Search for Hildebrand Glow (DCC) and input your credentials. <b>You may need to clear your browser cache before the integration appears in the list.</b>
+  Visit the <i>Integrations</i> section in Home Assistant and click the <i>Add</i> button in the bottom right corner. Search for <code>Hildebrand Glow (DCC)</code> and input your credentials. <b>You may need to clear your browser cache before the integration appears in the list.</b>
 </details>
 
 ## Sensors
