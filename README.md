@@ -54,7 +54,10 @@ Once you've authenticated, the integration will automatically set up the followi
 - Rate - Current tariff (GBP/kWh)
 
 The usage and cost sensors will still show the previous day's data until shortly after 01:30 to ensure that all of the previous day's data is collected.
+
 The standing charge and rate sensors are disabled by default as they are less commonly used. Before enabling them, ensure the data is visible in the Bright app.
+
+If the data being shown is wrong, check the Bright app first. If it is also wrong there, you will need to contact your supplier and tell them to fix the data being provided to DCC Other Users, as Bright is one of these.
 
 ## Energy Management
 
