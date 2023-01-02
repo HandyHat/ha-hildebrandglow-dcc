@@ -3,6 +3,7 @@ import asyncio
 from typing import Any, Dict
 
 import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -39,8 +40,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = all(
         await asyncio.gather(
             *[
-                hass.config_entries.async_forward_entry_unload(
-                    entry, component)
+                hass.config_entries.async_forward_entry_unload(entry, component)
                 for component in PLATFORMS
             ]
         )

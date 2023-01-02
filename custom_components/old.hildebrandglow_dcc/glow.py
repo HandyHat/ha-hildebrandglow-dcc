@@ -1,10 +1,11 @@
 """Classes for interacting with the Glowmarkt API."""
+from datetime import datetime
 import logging
 import time
-from datetime import datetime
 from typing import Any, Dict, List
 
 import requests
+
 from homeassistant import exceptions
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -168,22 +169,22 @@ class Glow:
 
         return self._current_data(resource, url, True)
 
-    # def cumulative_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-    #     """Retrieve the current usage for a specified resource."""
-    #     # Need to pull updated data from DCC first
-    #     current_time = datetime.now()
-    #     current_date = current_time.strftime("%Y-%m-%d")
-    #     current_year = current_time.strftime("%Y-01-01")
-    #     utc_str = self.calc_offset()
-    #     url = (
-    #         f"{self.BASE_URL}/resource/{resource}/readings?from="
-    #         + current_year
-    #         + "T00:00:00&to="
-    #         + current_date
-    #         + "T23:59:59&period=P1Y"
-    #         + utc_str
-    #         + "&function=sum"
-    #     )
+        # def cumulative_usage(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+        #     """Retrieve the current usage for a specified resource."""
+        #     # Need to pull updated data from DCC first
+        #     current_time = datetime.now()
+        #     current_date = current_time.strftime("%Y-%m-%d")
+        #     current_year = current_time.strftime("%Y-01-01")
+        #     utc_str = self.calc_offset()
+        #     url = (
+        #         f"{self.BASE_URL}/resource/{resource}/readings?from="
+        #         + current_year
+        #         + "T00:00:00&to="
+        #         + current_date
+        #         + "T23:59:59&period=P1Y"
+        #         + utc_str
+        #         + "&function=sum"
+        #     )
 
         return self._current_data(resource, url, False)
 
