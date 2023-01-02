@@ -111,7 +111,7 @@ def supply_type(resource) -> str:
         return "electricity"
     if "gas.consumption" in resource.classifier:
         return "gas"
-    _LOGGER.error("Unknown classifier: %s", resource.classifier)
+    _LOGGER.error("Unknown classifier: %s. Please open an issue.", resource.classifier)
     return "unknown"
 
 
@@ -167,7 +167,9 @@ async def daily_data(self) -> float:
             except requests.exceptions.ConnectionError as secondary_ex:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception: %s. Please open an issue.", secondary_ex)
+                _LOGGER.exception(
+                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
     _LOGGER.debug(
@@ -197,7 +199,9 @@ async def daily_data(self) -> float:
             except requests.exceptions.ConnectionError as secondary_ex:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception: %s. Please open an issue.", secondary_ex)
+                _LOGGER.exception(
+                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
     _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
@@ -226,7 +230,9 @@ async def tariff_data(self) -> float:
             except requests.exceptions.ConnectionError as secondary_ex:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception: %s. Please open an issue.", secondary_ex)
+                _LOGGER.exception(
+                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
     _LOGGER.debug(
@@ -255,7 +261,9 @@ async def refresh_token(self):
     except requests.exceptions.ConnectionError as ex:
         raise ConfigEntryNotReady(f"Cannot connect: {ex}") from ex
     except Exception as ex:  # pylint: disable=broad-except
-        raise ConfigEntryNotReady(f"Unexpected exception: {ex}. Please open an issue.") from ex
+        raise ConfigEntryNotReady(
+            f"Unexpected exception: {ex}. Please open an issue."
+        ) from ex
     else:
         _LOGGER.debug("Successful Post to %sauth", glowmarkt.url)
 
