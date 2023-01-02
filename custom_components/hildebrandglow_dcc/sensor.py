@@ -51,7 +51,7 @@ async def async_setup_entry(
         _LOGGER.error("Cannot connect: %s", ex)
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
-        _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
+        _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     _LOGGER.debug("Successful GET to %svirtualentity", glowmarkt.url)
 
     for virtual_entity in virtual_entities:
@@ -65,7 +65,7 @@ async def async_setup_entry(
             _LOGGER.error("Cannot connect: %s", ex)
         # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
         except Exception as ex:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
         _LOGGER.debug(
             "Successful GET to %svirtualentity/%s/resources",
             glowmarkt.url,
@@ -111,7 +111,7 @@ def supply_type(resource) -> str:
         return "electricity"
     if "gas.consumption" in resource.classifier:
         return "gas"
-    _LOGGER.error("Unknown classifier: %s. Please open an issue.", resource.classifier)
+    _LOGGER.error("Unknown classifier: %s. Please open an issue", resource.classifier)
     return "unknown"
 
 
@@ -168,10 +168,10 @@ async def daily_data(self) -> float:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
                 _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                    "Unexpected exception: %s. Please open an issue", secondary_ex
                 )
         else:
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     _LOGGER.debug(
         "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
         self.resource.id,
@@ -200,10 +200,10 @@ async def daily_data(self) -> float:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
                 _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                    "Unexpected exception: %s. Please open an issue", secondary_ex
                 )
         else:
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
     return readings[0][1].value
 
@@ -215,7 +215,7 @@ async def tariff_data(self) -> float:
     except UnboundLocalError:
         supply = supply_type(self.resource)
         _LOGGER.warning(
-            "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors.",
+            "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors",
             supply,
             self.resource.id,
         )
@@ -235,7 +235,7 @@ async def tariff_data(self) -> float:
             except UnboundLocalError:
                 supply = supply_type(self.resource)
                 _LOGGER.warning(
-                    "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors.",
+                    "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors",
                     supply,
                     self.resource.id,
                 )
@@ -245,10 +245,10 @@ async def tariff_data(self) -> float:
                 _LOGGER.error("Cannot connect: %s", secondary_ex)
             except Exception as secondary_ex:  # pylint: disable=broad-except
                 _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue.", secondary_ex
+                    "Unexpected exception: %s. Please open an issue", secondary_ex
                 )
         else:
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue.", ex)
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     _LOGGER.debug(
         "Successful GET to %sresource/%s/tariff",
         self.glowmarkt.url,
