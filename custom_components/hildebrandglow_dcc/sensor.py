@@ -229,7 +229,9 @@ async def tariff_data(self) -> float:
     )
     if tariff:
         return tariff
-    _LOGGER.warning("No tariff data found. If you don't see tariff data in the Bright app, please disable the rate and standing charge sensors.")
+    _LOGGER.warning(
+        "No tariff data found. If you don't see tariff data in the Bright app, please disable the rate and standing charge sensors."
+    )
 
 
 async def refresh_token(self):
