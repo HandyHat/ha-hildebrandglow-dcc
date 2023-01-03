@@ -82,11 +82,11 @@ async def async_setup_entry(
 
                 # Standing and Rate sensors are handled by the coordinator
                 coordinator = TariffCoordinator(hass, glowmarkt, resource, entry)
-                await coordinator.async_config_entry_first_refresh()
                 standing_sensor = Standing(coordinator, resource, virtual_entity)
                 entities.append(standing_sensor)
                 rate_sensor = Rate(coordinator, resource, virtual_entity)
                 entities.append(rate_sensor)
+                # await coordinator.async_config_entry_first_refresh() # This isn't necessary as update_before_add is already specified
 
         # Cost sensors must be created after usage sensors as they reference them as a meter
         for resource in resources:
@@ -212,6 +212,12 @@ async def tariff_data(self) -> float:
     """Get tariff data from the API."""
     try:
         tariff = await self.hass.async_add_executor_job(self.resource.get_tariff)
+        _LOGGER.debug(
+            "Successful GET to %sresource/%s/tariff",
+            self.glowmarkt.url,
+            self.resource.id,
+        )
+        return tariff
     except UnboundLocalError:
         supply = supply_type(self.resource)
         _LOGGER.warning(
@@ -225,37 +231,13 @@ async def tariff_data(self) -> float:
         _LOGGER.error("Cannot connect: %s", ex)
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
-        if "Request failed" in str(ex):
+        if "Request failed" in str(ex) and not self.auth_refreshed:
             _LOGGER.debug("Non-200 Status Code. Refreshing auth")
             await refresh_token(self)
-            try:
-                tariff = await self.hass.async_add_executor_job(
-                    self.resource.get_tariff
-                )
-            except UnboundLocalError:
-                supply = supply_type(self.resource)
-                _LOGGER.warning(
-                    "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors",
-                    supply,
-                    self.resource.id,
-                )
-            except requests.Timeout as secondary_ex:
-                _LOGGER.error("Timeout: %s", secondary_ex)
-            except requests.exceptions.ConnectionError as secondary_ex:
-                _LOGGER.error("Cannot connect: %s", secondary_ex)
-            except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue", secondary_ex
-                )
-        else:
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-    _LOGGER.debug(
-        "Successful GET to %sresource/%s/tariff",
-        self.glowmarkt.url,
-        self.resource.id,
-    )
-    if tariff:
-        return tariff
+            self.auth_refreshed = True
+            await tariff_data(self)
+        _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
+    return None
 
 
 async def refresh_token(self):
@@ -392,19 +374,23 @@ class TariffCoordinator(DataUpdateCoordinator):
         )
         self.entry = entry
         self.glowmarkt = glowmarkt
-        self.initialised = False
+        self.rate_initialised = False
+        self.standing_initialised = False
         self.resource = resource
 
     async def _async_update_data(self):
         """Fetch data from tariff API endpoint."""
-        if not self.initialised:
-            self.initialised = True
+        # This needs 2 loops to ensure both the rate and the standing sensors get initial values
+        if not self.standing_initialised:
+            if not self.rate_initialised:
+                self.rate_initialised = True
+                return await tariff_data(self)
+            self.standing_initialised = True
             return await tariff_data(self)
         # Only poll when updated data might be available
         if await should_update():
             tariff = await tariff_data(self)
-            if tariff:
-                return tariff
+            return tariff
 
 
 class Standing(CoordinatorEntity, SensorEntity):
@@ -438,9 +424,12 @@ class Standing(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        value = float(self.coordinator.data.current_rates.standing_charge.value) / 100
-        self._attr_native_value = round(value, 4)
-        self.async_write_ha_state()
+        if self.coordinator.data:
+            value = (
+                float(self.coordinator.data.current_rates.standing_charge.value) / 100
+            )
+            self._attr_native_value = round(value, 4)
+            self.async_write_ha_state()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -487,9 +476,10 @@ class Rate(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        value = float(self.coordinator.data.current_rates.rate.value) / 100
-        self._attr_native_value = round(value, 4)
-        self.async_write_ha_state()
+        if self.coordinator.data:
+            value = float(self.coordinator.data.current_rates.rate.value) / 100
+            self._attr_native_value = round(value, 4)
+            self.async_write_ha_state()
 
     @property
     def device_info(self) -> DeviceInfo:
