@@ -15,14 +15,16 @@ The data provided will be delayed by around 30 minutes. To get real-time consump
 
 ### Automated installation through HACS
 
-You can install this component through [HACS](https://hacs.xyz/) to easily receive updates. Once HACS is installed, click this link:
+You can install this component through [HACS](https://hacs.xyz/) to easily receive updates.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=HandyHat&repository=ha-hildebrandglow-dcc)
+Once HACS is installed, visit the HACS Integrations pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories). You'll then be able to install it through the *Integrations* pane.
 
-<details>
+<!-- [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=HandyHat&repository=ha-hildebrandglow-dcc) -->
+
+<!-- <details>
   <summary>Manually add to HACS</summary>
   Visit the HACS Integrations pane and add <code>https://github.com/HandyHat/ha-hildebrandglow-dcc</code> as an <code>Integration</code> by following <a href=https://hacs.xyz/docs/faq/custom_repositories>these instructions</a>. You'll then be able to install it through the <i>Integrations</i> pane.
-</details>
+</details> -->
 
 ### Manual installation
 
@@ -49,8 +51,8 @@ Then, add the integration:
 Once you've authenticated, the integration will automatically set up the following sensors for each of the smart meters on your account:
 
 - Usage (Today) - Consumption today (kWh)
-- Cost (Today) - Cost of electricity used today (GBP)
-- Standing Charge - Today's standing charge for electricity (GBP)
+- Cost (Today) - Total cost of today's consumption (GBP)
+- Standing Charge - Current standing charge (GBP)
 - Rate - Current tariff (GBP/kWh)
 
 The usage and cost sensors will still show the previous day's data until shortly after 01:30 to ensure that all of the previous day's data is collected.
