@@ -101,7 +101,7 @@ Thanks go to:
 
 - The [pyglowmarkt](https://github.com/cybermaggedon/pyglowmarkt) library, which is used to interact with the Hildebrand API.
 
-- The Hildebrand API [documentation](https://docs.glowmarkt.com/GlowmarktAPIDataRetrievalDocumentationIndividualUserForBright.pdf) and [Swagger UI](https://api.beething.com/api-docs/v0-1/resourcesys/).
+- The Hildebrand API [documentation](https://docs.glowmarkt.com/GlowmarktAPIDataRetrievalDocumentationIndividualUserForBright.pdf) and [Swagger UI](https://api.glowmarkt.com/api-docs/v0-1/resourcesys/).
 
 - The [original project](https://github.com/unlobito/ha-hildebrandglow) from which this project is forked.
 
