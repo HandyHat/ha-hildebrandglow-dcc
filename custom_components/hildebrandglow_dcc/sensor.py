@@ -5,7 +5,6 @@ from collections.abc import Callable
 from datetime import datetime, time, timedelta
 import logging
 
-from glowmarkt import BrightClient
 import requests
 
 from homeassistant.components.sensor import (
@@ -16,7 +15,6 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -45,32 +43,38 @@ async def async_setup_entry(
         virtual_entities = await hass.async_add_executor_job(
             glowmarkt.get_virtual_entities
         )
+        _LOGGER.debug("Successful GET to %svirtualentity", glowmarkt.url)
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
         _LOGGER.error("Cannot connect: %s", ex)
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
-        _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-    _LOGGER.debug("Successful GET to %svirtualentity", glowmarkt.url)
+        if "Request failed" in str(ex):
+            _LOGGER.error("Non-200 Status Code. The Glow API may be experiencing issues")
+        else:
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
     for virtual_entity in virtual_entities:
         # Gather all resources for each virtual entity
         resources: dict = {}
         try:
             resources = await hass.async_add_executor_job(virtual_entity.get_resources)
+            _LOGGER.debug(
+                "Successful GET to %svirtualentity/%s/resources",
+                glowmarkt.url,
+                virtual_entity.id,
+            )
         except requests.Timeout as ex:
             _LOGGER.error("Timeout: %s", ex)
         except requests.exceptions.ConnectionError as ex:
             _LOGGER.error("Cannot connect: %s", ex)
         # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
         except Exception as ex:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-        _LOGGER.debug(
-            "Successful GET to %svirtualentity/%s/resources",
-            glowmarkt.url,
-            virtual_entity.id,
-        )
+            if "Request failed" in str(ex):
+                _LOGGER.error("Non-200 Status Code. The Glow API may be experiencing issues")
+            else:
+                _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
         # Loop through all resources and create sensors
         for resource in resources:
@@ -86,7 +90,6 @@ async def async_setup_entry(
                 entities.append(standing_sensor)
                 rate_sensor = Rate(coordinator, resource, virtual_entity)
                 entities.append(rate_sensor)
-                # await coordinator.async_config_entry_first_refresh() # This isn't necessary as update_before_add is already specified
 
         # Cost sensors must be created after usage sensors as they reference them as a meter
         for resource in resources:
@@ -151,6 +154,10 @@ async def daily_data(self) -> float:
     # Tell Hildebrand to pull latest DCC data
     try:
         await self.hass.async_add_executor_job(self.resource.catchup)
+        _LOGGER.debug(
+        "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
+        self.resource.id,
+    )
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -158,29 +165,16 @@ async def daily_data(self) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
-            await refresh_token(self)
-            try:
-                await self.hass.async_add_executor_job(self.resource.catchup)
-            except requests.Timeout as secondary_ex:
-                _LOGGER.error("Timeout: %s", secondary_ex)
-            except requests.exceptions.ConnectionError as secondary_ex:
-                _LOGGER.error("Cannot connect: %s", secondary_ex)
-            except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue", secondary_ex
-                )
+            _LOGGER.warning("Non-200 Status Code. The Glow API may be experiencing issues")
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-    _LOGGER.debug(
-        "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
-        self.resource.id,
-    )
 
     try:
         readings = await self.hass.async_add_executor_job(
             self.resource.get_readings, t_from, t_to, "P1D", "sum", True
         )
+        _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
+        return readings[0][1].value
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -188,24 +182,10 @@ async def daily_data(self) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
-            await refresh_token(self)
-            try:
-                readings = await self.hass.async_add_executor_job(
-                    self.resource.get_readings, t_from, t_to, "P1D", "sum", True
-                )
-            except requests.Timeout as secondary_ex:
-                _LOGGER.error("Timeout: %s", secondary_ex)
-            except requests.exceptions.ConnectionError as secondary_ex:
-                _LOGGER.error("Cannot connect: %s", secondary_ex)
-            except Exception as secondary_ex:  # pylint: disable=broad-except
-                _LOGGER.exception(
-                    "Unexpected exception: %s. Please open an issue", secondary_ex
-                )
+            _LOGGER.debug("Non-200 Status Code. The Glow API may be experiencing issues")
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-    _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
-    return readings[0][1].value
+    return None
 
 
 async def tariff_data(self) -> float:
@@ -231,34 +211,13 @@ async def tariff_data(self) -> float:
         _LOGGER.error("Cannot connect: %s", ex)
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
-        if "Request failed" in str(ex) and not self.auth_refreshed:
-            _LOGGER.debug("Non-200 Status Code. Refreshing auth")
-            await refresh_token(self)
-            self.auth_refreshed = True
-            await tariff_data(self)
-        _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
+        if "Request failed" in str(ex):
+            _LOGGER.debug(
+                "Non-200 Status Code. The Glow API may be experiencing issues"
+            )
+        else:
+            _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     return None
-
-
-async def refresh_token(self):
-    """Refresh the glowmarkt API token"""
-    try:
-        glowmarkt = await self.hass.async_add_executor_job(
-            BrightClient, self.entry.data["username"], self.entry.data["password"]
-        )
-    except requests.Timeout as ex:
-        raise ConfigEntryNotReady(f"Timeout: {ex}") from ex
-    except requests.exceptions.ConnectionError as ex:
-        raise ConfigEntryNotReady(f"Cannot connect: {ex}") from ex
-    except Exception as ex:  # pylint: disable=broad-except
-        raise ConfigEntryNotReady(
-            f"Unexpected exception: {ex}. Please open an issue."
-        ) from ex
-    else:
-        _LOGGER.debug("Successful Post to %sauth", glowmarkt.url)
-
-    # Set API object
-    self.hass.data[DOMAIN][self.entry.entry_id] = glowmarkt
 
 
 class Usage(SensorEntity):
@@ -304,13 +263,15 @@ class Usage(SensorEntity):
         # Get data on initial startup
         if not self.initialised:
             value = await daily_data(self)
-            self._attr_native_value = round(value, 2)
-            self.initialised = True
+            if value:
+                self._attr_native_value = round(value, 2)
+                self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
                 value = await daily_data(self)
-                self._attr_native_value = round(value, 2)
+                if value:
+                    self._attr_native_value = round(value, 2)
 
 
 class Cost(SensorEntity):
@@ -349,14 +310,16 @@ class Cost(SensorEntity):
     async def async_update(self) -> None:
         """Fetch new data for the sensor."""
         if not self.initialised:
-            value = await daily_data(self) / 100
-            self._attr_native_value = round(value, 2)
-            self.initialised = True
+            value = await daily_data(self)
+            if value:
+                self._attr_native_value = round(value / 100, 2)
+                self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
-                value = await daily_data(self) / 100
-                self._attr_native_value = round(value, 2)
+                value = await daily_data(self)
+                if value:
+                    self._attr_native_value = round(value / 100, 2)
 
 
 class TariffCoordinator(DataUpdateCoordinator):
