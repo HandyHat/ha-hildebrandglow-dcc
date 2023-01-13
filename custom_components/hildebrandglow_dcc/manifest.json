@@ -6,7 +6,7 @@
   "documentation": "https://github.com/HandyHat/ha-hildebrandglow-dcc",
   "issue_tracker": "https://github.com/HandyHat/ha-hildebrandglow-dcc/issues",
   "requirements": [
-    "https://github.com/cybermaggedon/pyglowmarkt/archive/69e9c949a3f0d0293ad1af4005de154b5de04234.zip#pyglowmarkt==0.5.4"
+    "pyglowmarkt==0.5.5"
   ],
   "codeowners": [
     "@HandyHat"
