@@ -31,8 +31,8 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> bool:
     """Set up the sensor platform."""
-    entities = []
-    meters = {}
+    entities: list = []
+    meters: dict = {}
 
     # Get API object from the config flow
     glowmarkt = hass.data[DOMAIN][entry.entry_id]
@@ -51,7 +51,9 @@ async def async_setup_entry(
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.error("Non-200 Status Code. The Glow API may be experiencing issues")
+            _LOGGER.error(
+                "Non-200 Status Code. The Glow API may be experiencing issues"
+            )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
@@ -72,20 +74,22 @@ async def async_setup_entry(
         # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
         except Exception as ex:  # pylint: disable=broad-except
             if "Request failed" in str(ex):
-                _LOGGER.error("Non-200 Status Code. The Glow API may be experiencing issues")
+                _LOGGER.error(
+                    "Non-200 Status Code. The Glow API may be experiencing issues"
+                )
             else:
                 _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
         # Loop through all resources and create sensors
         for resource in resources:
             if resource.classifier in ["electricity.consumption", "gas.consumption"]:
-                usage_sensor = Usage(hass, resource, virtual_entity, entry)
+                usage_sensor = Usage(hass, resource, virtual_entity)
                 entities.append(usage_sensor)
                 # Save the usage sensor as a meter so that the cost sensor can reference it
                 meters[resource.classifier] = usage_sensor
 
                 # Standing and Rate sensors are handled by the coordinator
-                coordinator = TariffCoordinator(hass, glowmarkt, resource, entry)
+                coordinator = TariffCoordinator(hass, resource)
                 standing_sensor = Standing(coordinator, resource, virtual_entity)
                 entities.append(standing_sensor)
                 rate_sensor = Rate(coordinator, resource, virtual_entity)
@@ -94,11 +98,11 @@ async def async_setup_entry(
         # Cost sensors must be created after usage sensors as they reference them as a meter
         for resource in resources:
             if resource.classifier == "gas.consumption.cost":
-                cost_sensor = Cost(hass, resource, virtual_entity, entry)
+                cost_sensor = Cost(hass, resource, virtual_entity)
                 cost_sensor.meter = meters["gas.consumption"]
                 entities.append(cost_sensor)
             elif resource.classifier == "electricity.consumption.cost":
-                cost_sensor = Cost(hass, resource, virtual_entity, entry)
+                cost_sensor = Cost(hass, resource, virtual_entity)
                 cost_sensor.meter = meters["electricity.consumption"]
                 entities.append(cost_sensor)
 
@@ -137,7 +141,7 @@ async def should_update() -> bool:
     return False
 
 
-async def daily_data(self) -> float:
+async def daily_data(hass: HomeAssistant, resource) -> float:
     """Get daily usage from the API."""
     # If it's before 01:06, we need to fetch yesterday's data
     # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
@@ -147,17 +151,17 @@ async def daily_data(self) -> float:
     else:
         now = datetime.now()
     # Round to the day to set time to 00:00:00
-    t_from = await self.hass.async_add_executor_job(self.resource.round, now, "P1D")
+    t_from = await hass.async_add_executor_job(resource.round, now, "P1D")
     # Round to the minute
-    t_to = await self.hass.async_add_executor_job(self.resource.round, now, "PT1M")
+    t_to = await hass.async_add_executor_job(resource.round, now, "PT1M")
 
     # Tell Hildebrand to pull latest DCC data
     try:
-        await self.hass.async_add_executor_job(self.resource.catchup)
+        await hass.async_add_executor_job(resource.catchup)
         _LOGGER.debug(
-        "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
-        self.resource.id,
-    )
+            "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/catchup",
+            resource.id,
+        )
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -165,15 +169,17 @@ async def daily_data(self) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.warning("Non-200 Status Code. The Glow API may be experiencing issues")
+            _LOGGER.warning(
+                "Non-200 Status Code. The Glow API may be experiencing issues"
+            )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
     try:
-        readings = await self.hass.async_add_executor_job(
-            self.resource.get_readings, t_from, t_to, "P1D", "sum", True
+        readings = await hass.async_add_executor_job(
+            resource.get_readings, t_from, t_to, "P1D", "sum", True
         )
-        _LOGGER.debug("Successfully got daily usage for resource id %s", self.resource.id)
+        _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
         return readings[0][1].value
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
@@ -182,28 +188,29 @@ async def daily_data(self) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.debug("Non-200 Status Code. The Glow API may be experiencing issues")
+            _LOGGER.debug(
+                "Non-200 Status Code. The Glow API may be experiencing issues"
+            )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     return None
 
 
-async def tariff_data(self) -> float:
+async def tariff_data(hass: HomeAssistant, resource) -> float:
     """Get tariff data from the API."""
     try:
-        tariff = await self.hass.async_add_executor_job(self.resource.get_tariff)
+        tariff = await hass.async_add_executor_job(resource.get_tariff)
         _LOGGER.debug(
-            "Successful GET to %sresource/%s/tariff",
-            self.glowmarkt.url,
-            self.resource.id,
+            "Successful GET to https://api.glowmarkt.com/api/v0-1/resource/%s/tariff",
+            resource.id,
         )
         return tariff
     except UnboundLocalError:
-        supply = supply_type(self.resource)
+        supply = supply_type(resource)
         _LOGGER.warning(
             "No tariff data found for %s meter (id: %s). If you don't see tariff data for this meter in the Bright app, please disable the associated rate and standing charge sensors",
             supply,
-            self.resource.id,
+            resource.id,
         )
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
@@ -229,13 +236,10 @@ class Usage(SensorEntity):
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-    def __init__(
-        self, hass: HomeAssistant, resource, virtual_entity, entry: ConfigEntry
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
         self._attr_unique_id = resource.id
 
-        self.entry = entry
         self.hass = hass
         self.initialised = False
         self.resource = resource
@@ -262,14 +266,14 @@ class Usage(SensorEntity):
         """Fetch new data for the sensor."""
         # Get data on initial startup
         if not self.initialised:
-            value = await daily_data(self)
+            value = await daily_data(self.hass, self.resource)
             if value:
                 self._attr_native_value = round(value, 2)
                 self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
-                value = await daily_data(self)
+                value = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value, 2)
 
@@ -283,13 +287,10 @@ class Cost(SensorEntity):
     _attr_native_unit_of_measurement = "GBP"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-    def __init__(
-        self, hass: HomeAssistant, resource, virtual_entity, entry: ConfigEntry
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
         self._attr_unique_id = resource.id
 
-        self.entry = entry
         self.hass = hass
         self.initialised = False
         self.meter = None
@@ -310,14 +311,14 @@ class Cost(SensorEntity):
     async def async_update(self) -> None:
         """Fetch new data for the sensor."""
         if not self.initialised:
-            value = await daily_data(self)
+            value = await daily_data(self.hass, self.resource)
             if value:
                 self._attr_native_value = round(value / 100, 2)
                 self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
-                value = await daily_data(self)
+                value = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value / 100, 2)
 
@@ -325,7 +326,7 @@ class Cost(SensorEntity):
 class TariffCoordinator(DataUpdateCoordinator):
     """Data update coordinator for the tariff sensors."""
 
-    def __init__(self, hass: HomeAssistant, glowmarkt, resource, entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, resource) -> None:
         """Initialize tariff coordinator."""
         super().__init__(
             hass,
@@ -335,8 +336,7 @@ class TariffCoordinator(DataUpdateCoordinator):
             # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(minutes=5),
         )
-        self.entry = entry
-        self.glowmarkt = glowmarkt
+
         self.rate_initialised = False
         self.standing_initialised = False
         self.resource = resource
@@ -347,12 +347,12 @@ class TariffCoordinator(DataUpdateCoordinator):
         if not self.standing_initialised:
             if not self.rate_initialised:
                 self.rate_initialised = True
-                return await tariff_data(self)
+                return await tariff_data(self.hass, self.resource)
             self.standing_initialised = True
-            return await tariff_data(self)
+            return await tariff_data(self.hass, self.resource)
         # Only poll when updated data might be available
         if await should_update():
-            tariff = await tariff_data(self)
+            tariff = await tariff_data(self.hass, self.resource)
             return tariff
 
 
@@ -375,7 +375,7 @@ class Standing(CoordinatorEntity, SensorEntity):
         False  # Don't enable by default as less commonly used
     )
 
-    def __init__(self, coordinator, resource, virtual_entity):
+    def __init__(self, coordinator, resource, virtual_entity) -> None:
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
 
@@ -427,7 +427,7 @@ class Rate(CoordinatorEntity, SensorEntity):
         False  # Don't enable by default as less commonly used
     )
 
-    def __init__(self, coordinator, resource, virtual_entity):
+    def __init__(self, coordinator, resource, virtual_entity) -> None:
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
 
