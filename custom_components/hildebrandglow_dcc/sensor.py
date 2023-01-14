@@ -188,7 +188,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Non-200 Status Code. The Glow API may be experiencing issues"
             )
         else:
@@ -219,7 +219,7 @@ async def tariff_data(hass: HomeAssistant, resource) -> float:
     # Can't use the RuntimeError exception from the library as it's not a subclass of Exception
     except Exception as ex:  # pylint: disable=broad-except
         if "Request failed" in str(ex):
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Non-200 Status Code. The Glow API may be experiencing issues"
             )
         else:
