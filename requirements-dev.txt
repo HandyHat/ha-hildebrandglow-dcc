@@ -1,5 +1,5 @@
 black==22.12.0
 homeassistant
-isort==5.11.4
+isort==5.12.0
 pyglowmarkt==0.5.5
 pylint==2.15.10
