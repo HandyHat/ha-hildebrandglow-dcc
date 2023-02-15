@@ -1,6 +1,6 @@
 # Hildebrand Glow (DCC) Integration
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
 [![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/HandyHat/ha-hildebrandglow-dcc?style=for-the-badge)](https://www.codefactor.io/repository/github/handyhat/ha-hildebrandglow-dcc)
 [![DeepSource](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc.svg/?label=active+issues&show_trend=true&token=gYN6CNb5ApHN5Pry_U-FFSYK)](https://deepsource.io/gh/HandyHat/ha-hildebrandglow-dcc/?ref=repository-badge)
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/HandyHat)
@@ -15,16 +15,14 @@ The data provided will be delayed by around 30 minutes. To get real-time consump
 
 ### Automated installation through HACS
 
-You can install this component through [HACS](https://hacs.xyz/) to easily receive updates.
+You can install this component through [HACS](https://hacs.xyz/) to easily receive updates. Once HACS is installed, click this link:
 
-Once HACS is installed, visit the HACS Integrations pane and add `https://github.com/HandyHat/ha-hildebrandglow-dcc` as an `Integration` by following [these instructions](https://hacs.xyz/docs/faq/custom_repositories). You'll then be able to install it through the *Integrations* pane.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=HandyHat&repository=ha-hildebrandglow-dcc)
 
-<!-- [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=HandyHat&repository=ha-hildebrandglow-dcc) -->
-
-<!-- <details>
+<details>
   <summary>Manually add to HACS</summary>
-  Visit the HACS Integrations pane and add <code>https://github.com/HandyHat/ha-hildebrandglow-dcc</code> as an <code>Integration</code> by following <a href=https://hacs.xyz/docs/faq/custom_repositories>these instructions</a>. You'll then be able to install it through the <i>Integrations</i> pane.
-</details> -->
+  Visit the HACS Integrations pane and go to <i>Explore and download repositories</i>. Search for <code>Hildebrand Glow (DCC)</code>, and then hit <i>Download</i> You'll then be able to install it through the <i>Integrations</i> pane.
+</details>
 
 ### Manual installation
 
