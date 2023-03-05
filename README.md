@@ -21,7 +21,7 @@ You can install this component through [HACS](https://hacs.xyz/) to easily recei
 
 <details>
   <summary>Manually add to HACS</summary>
-  Visit the HACS Integrations pane and go to <i>Explore and download repositories</i>. Search for <code>Hildebrand Glow (DCC)</code>, and then hit <i>Download</i> You'll then be able to install it through the <i>Integrations</i> pane.
+  Visit the HACS Integrations pane and go to <i>Explore and download repositories</i>. Search for <code>Hildebrand Glow (DCC)</code>, and then hit <i>Download</i>. You'll then be able to install it through the <i>Integrations</i> pane.
 </details>
 
 ### Manual installation
