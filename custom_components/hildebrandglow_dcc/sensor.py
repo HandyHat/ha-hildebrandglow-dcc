@@ -180,6 +180,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
         readings = await hass.async_add_executor_job(
             resource.get_readings, t_from, t_to, "P1D", "sum", True
         )
+        # pyglowmarkt always returns data in UTC per day
         _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
         _LOGGER.debug("Readings for %s has %s entries", resource.classifier, len(readings))
         v = readings[0][1].value
