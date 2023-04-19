@@ -176,11 +176,16 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
     try:
+        _LOGGER.debug("Get readings from %s to %s for %s", t_from, t_to, resource.classifier)
         readings = await hass.async_add_executor_job(
             resource.get_readings, t_from, t_to, "P1D", "sum", True
         )
         _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
-        return readings[0][1].value
+        _LOGGER.debug("Readings for %s has %s entries", resource.classifier, len(readings))
+        v = readings[0][1].value
+        if len(readings) > 1:
+            v += readings[1][1].value
+        return v
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
