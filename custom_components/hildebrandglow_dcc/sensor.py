@@ -189,8 +189,10 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
         v = readings[0][1].value
         _LOGGER.debug("reading %f:",v)
         if (resource.classifier == "electricity.consumption.cost" or resource.classifier == "gas.consumption.cost"):
-            _LOGGER.debug("reading total %f:",v)
-            return v
+          if len(readings) > 1:
+                v = readings[1][1].value
+          _LOGGER.debug("reading cost %f:",v)
+          return v
 
         if len(readings) > 1:
              v += readings[1][1].value
