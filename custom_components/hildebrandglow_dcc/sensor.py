@@ -184,12 +184,20 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
         )
         _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
         _LOGGER.debug(
-            "Readings for %s has %s entries", resource.classifier, len(readings)
+            "Readings for %s has %s entries ", resource.classifier, len(readings),
         )
         v = readings[0][1].value
+        _LOGGER.debug("reading %f:",v)
+        if (resource.classifier == "electricity.consumption.cost" or resource.classifier == "gas.consumption.cost"):
+            _LOGGER.debug("reading total %f:",v)
+            return v
+
         if len(readings) > 1:
-            v += readings[1][1].value
+             v += readings[1][1].value
+             _LOGGER.debug("reading %f:",v)
+        _LOGGER.debug("reading total %f:",v)
         return v
+
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
