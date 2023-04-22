@@ -186,6 +186,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
         _LOGGER.debug(
             "Readings for %s has %s entries ", resource.classifier, len(readings),
         )
+        v = 0.0
         v = readings[0][1].value
         _LOGGER.debug("reading %f:",v)
         if (resource.classifier == "electricity.consumption.cost" or resource.classifier == "gas.consumption.cost"):
@@ -286,16 +287,13 @@ class Usage(SensorEntity):
         # Get data on initial startup
         if not self.initialised:
             value = await daily_data(self.hass, self.resource)
-            if type(value) == float or type(value) == int :
-                self._attr_native_value = round(value, 2)
-                self._attr_native_value = value
-                self.initialised = True
+            self._attr_native_value = round(value, 3)
+            self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
                 value = await daily_data(self.hass, self.resource)
-                if type(value) == float or type(value) == int :
-                    self._attr_native_value = round(value, 2)
+                self._attr_native_value = round(value, 3)
 
 
 class Cost(SensorEntity):
@@ -332,15 +330,13 @@ class Cost(SensorEntity):
         """Fetch new data for the sensor."""
         if not self.initialised:
             value = await daily_data(self.hass, self.resource)
-            if type(value) == float or type(value) == int:
-                self._attr_native_value = round(value / 100, 2)
-                self.initialised = True
+            self._attr_native_value = round(value / 100, 2)
+            self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
                 value = await daily_data(self.hass, self.resource)
-                if type(value) == float or type(value) == int:
-                    self._attr_native_value = round(value / 100, 2)
+                self._attr_native_value = round(value / 100, 2)
 
 
 class TariffCoordinator(DataUpdateCoordinator):
