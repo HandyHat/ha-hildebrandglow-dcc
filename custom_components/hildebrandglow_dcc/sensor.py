@@ -143,6 +143,7 @@ async def should_update() -> bool:
 
 async def daily_data(hass: HomeAssistant, resource) -> float:
     """Get daily usage from the API."""
+    v = 0.0
     # If it's before 01:06, we need to fetch yesterday's data
     # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
     if datetime.now().time() <= time(1, 5):
@@ -187,7 +188,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
             "Readings for %s has %s entries ", resource.classifier, len(readings),
         )
 
-        v = 0.0
+        
         v = readings[0][1].value
         _LOGGER.debug("1st reading %f:",v)
 
@@ -197,6 +198,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
 
         if (resource.classifier == "electricity.consumption.cost" or resource.classifier == "gas.consumption.cost"):
           if len(readings) > 1:
+                _LOGGER.debug("2nd cost reading %f:",readings[1][1].value)
                 v = readings[1][1].value
           _LOGGER.debug("reading cost %f:",v)
           return v
@@ -219,7 +221,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
             )
         else:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
-    return None
+    return v
 
 
 async def tariff_data(hass: HomeAssistant, resource) -> float:
