@@ -141,7 +141,7 @@ async def should_update() -> bool:
     return False
 
 
-async def daily_data(hass: HomeAssistant, resource) -> float:
+async def daily_data(hass: HomeAssistant, resource) -> (float, str):
     """Get daily usage from the API."""
     # If it's before 01:06, we need to fetch yesterday's data
     # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
@@ -189,7 +189,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
         v = readings[0][1].value
         if len(readings) > 1:
             v += readings[1][1].value
-        return v
+        return (v, t_from)
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -275,14 +275,14 @@ class Usage(SensorEntity):
         """Fetch new data for the sensor."""
         # Get data on initial startup
         if not self.initialised:
-            value = await daily_data(self.hass, self.resource)
+            (value, t_from) = await daily_data(self.hass, self.resource)
             if value:
                 self._attr_native_value = round(value, 2)
                 self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
-                value = await daily_data(self.hass, self.resource)
+                (value, t_from) = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value, 2)
 
@@ -294,7 +294,8 @@ class Cost(SensorEntity):
     _attr_has_entity_name = True
     _attr_name = "Cost (today)"
     _attr_native_unit_of_measurement = "GBP"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_last_reset = None
 
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
@@ -320,16 +321,18 @@ class Cost(SensorEntity):
     async def async_update(self) -> None:
         """Fetch new data for the sensor."""
         if not self.initialised:
-            value = await daily_data(self.hass, self.resource)
+            (value, t_from) = await daily_data(self.hass, self.resource)
             if value:
                 self._attr_native_value = round(value / 100, 2)
+                self._attr_last_reset = t_from
                 self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
-                value = await daily_data(self.hass, self.resource)
+                (value, t_from) = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value / 100, 2)
+                    self._attr_last_reset = t_from
 
 
 class TariffCoordinator(DataUpdateCoordinator):
