@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, time, timedelta
+from datetime import  timedelta  ,datetime , timezone
+
 import logging
 
 import requests
@@ -21,11 +22,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
+from homeassistant.util.dt import as_utc , now
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=5)
 
+# _LOGGER.setLevel(level=5)
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
@@ -135,7 +139,7 @@ def device_name(resource, virtual_entity) -> str:
 
 async def should_update() -> bool:
     """Check if time is between 0-5 or 30-35 minutes past the hour."""
-    minutes = datetime.now().minute
+    minutes = now().minute
     if (0 <= minutes <= 5) or (30 <= minutes <= 35):
         return True
     return False
@@ -143,17 +147,6 @@ async def should_update() -> bool:
 
 async def daily_data(hass: HomeAssistant, resource) -> float:
     """Get daily usage from the API."""
-    # If it's before 01:06, we need to fetch yesterday's data
-    # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
-    if datetime.now().time() <= time(1, 5):
-        _LOGGER.debug("Fetching yesterday's data")
-        now = datetime.now() - timedelta(days=1)
-    else:
-        now = datetime.now()
-    # Round to the day to set time to 00:00:00
-    t_from = await hass.async_add_executor_job(resource.round, now, "P1D")
-    # Round to the minute
-    t_to = await hass.async_add_executor_job(resource.round, now, "PT1M")
 
     # Tell Hildebrand to pull latest DCC data
     try:
@@ -176,20 +169,34 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
     try:
+        # Round to the minute in local time zone
+        t_to = await hass.async_add_executor_job(resource.round, now(), "PT1M")
+
+        # Convert Local time to UTC for API call
+        t_to_as_utc = as_utc(t_to)
+
+        # Create UTC Start dateTime use current utc time as reference.
+        t_from_as_utc = datetime(t_to_as_utc.year , t_to_as_utc.month, t_to_as_utc.day , hour=0 , tzinfo=timezone.utc)
+
         _LOGGER.debug(
-            "Get readings from %s to %s for %s", t_from, t_to, resource.classifier
+            "Get readings from %s to %s for %s", t_from_as_utc, t_to_as_utc, resource.classifier
         )
         readings = await hass.async_add_executor_job(
-            resource.get_readings, t_from, t_to, "P1D", "sum", True
+            resource.get_readings, t_from_as_utc, t_to_as_utc, "P1D", "sum", True
         )
-        _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
+        _LOGGER.debug("Successfully got daily usage for resource id %s", resource.classifier)
         _LOGGER.debug(
             "Readings for %s has %s entries", resource.classifier, len(readings)
         )
-        v = readings[0][1].value
-        if len(readings) > 1:
-            v += readings[1][1].value
-        return v
+
+        calculated_value = 0;
+
+        for reading in readings:
+            calculated_value += reading[1].value;
+
+        _LOGGER.debug( "Readings for %s has value %s",  resource.classifier, calculated_value )
+
+        return calculated_value
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -243,7 +250,7 @@ class Usage(SensorEntity):
     _attr_has_entity_name = True
     _attr_name = "Usage (today)"
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = SensorStateClass.TOTAL
 
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
@@ -273,19 +280,22 @@ class Usage(SensorEntity):
 
     async def async_update(self) -> None:
         """Fetch new data for the sensor."""
-        # Get data on initial startup
+        # Get data on initial startup``
         if not self.initialised:
             value = await daily_data(self.hass, self.resource)
             if value:
                 self._attr_native_value = round(value, 2)
-                self.initialised = True
+            else:
+                self._attr_native_value = 0
+            self.initialised = True
         else:
             # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
             if await should_update():
                 value = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value, 2)
-
+                else:
+                    self._attr_native_value = 0
 
 class Cost(SensorEntity):
     """Sensor usage for daily cost."""
@@ -294,7 +304,7 @@ class Cost(SensorEntity):
     _attr_has_entity_name = True
     _attr_name = "Cost (today)"
     _attr_native_unit_of_measurement = "GBP"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_state_class = SensorStateClass.TOTAL
 
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
@@ -330,6 +340,8 @@ class Cost(SensorEntity):
                 value = await daily_data(self.hass, self.resource)
                 if value:
                     self._attr_native_value = round(value / 100, 2)
+                else:
+                    self._attr_native_value = 0
 
 
 class TariffCoordinator(DataUpdateCoordinator):
