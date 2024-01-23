@@ -134,9 +134,9 @@ def device_name(resource, virtual_entity) -> str:
 
 
 async def should_update() -> bool:
-    """Check if time is between 0-5 or 30-35 minutes past the hour."""
+    """Check if time is between 1-5 or 31-35 minutes past the hour."""
     minutes = datetime.now().minute
-    if (0 <= minutes <= 5) or (30 <= minutes <= 35):
+    if (1 <= minutes <= 5) or (31 <= minutes <= 35):
         return True
     return False
 
