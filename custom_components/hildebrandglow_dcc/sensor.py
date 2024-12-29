@@ -21,6 +21,20 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
+
+from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfEnergy
+from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dtutil
+
+from homeassistant_historical_sensor import (
+    HistoricalSensor,
+    HistoricalState,
+    PollUpdateMixin,
+)
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -143,15 +157,10 @@ async def should_update() -> bool:
 
 async def daily_data(hass: HomeAssistant, resource) -> float:
     """Get daily usage from the API."""
-    # If it's before 01:06, we need to fetch yesterday's data
-    # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
-    if datetime.now().time() <= time(1, 5):
-        _LOGGER.debug("Fetching yesterday's data")
-        now = datetime.now() - timedelta(days=1)
-    else:
-        now = datetime.now()
+    # Always pull down the last 6 hours of readings
+    now = datetime.now()
     # Round to the day to set time to 00:00:00
-    t_from = await hass.async_add_executor_job(resource.round, now, "P1D")
+    t_from = await hass.async_add_executor_job(resource.round, datetime.now() - timedelta(hours=6), "P1D")
     # Round to the minute
     t_to = await hass.async_add_executor_job(resource.round, now, "PT1M")
 
@@ -176,20 +185,11 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
 
     try:
-        _LOGGER.debug(
-            "Get readings from %s to %s for %s", t_from, t_to, resource.classifier
-        )
         readings = await hass.async_add_executor_job(
-            resource.get_readings, t_from, t_to, "P1D", "sum", True
+            resource.get_readings, t_from, t_to, "PT30M", "sum", True
         )
         _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
-        _LOGGER.debug(
-            "Readings for %s has %s entries", resource.classifier, len(readings)
-        )
-        v = readings[0][1].value
-        if len(readings) > 1:
-            v += readings[1][1].value
-        return v
+        return readings
     except requests.Timeout as ex:
         _LOGGER.error("Timeout: %s", ex)
     except requests.exceptions.ConnectionError as ex:
@@ -236,14 +236,13 @@ async def tariff_data(hass: HomeAssistant, resource) -> float:
     return None
 
 
-class Usage(SensorEntity):
+class Usage(PollUpdateMixin, HistoricalSensor, SensorEntity):
     """Sensor object for daily usage."""
 
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_has_entity_name = True
     _attr_name = "Usage (today)"
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
@@ -253,6 +252,9 @@ class Usage(SensorEntity):
         self.initialised = False
         self.resource = resource
         self.virtual_entity = virtual_entity
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -271,30 +273,84 @@ class Usage(SensorEntity):
         if self.resource.classifier == "gas.consumption":
             return "mdi:fire"
 
-    async def async_update(self) -> None:
+    async def async_update_historical(self) -> None:
         """Fetch new data for the sensor."""
         # Get data on initial startup
         if not self.initialised:
-            value = await daily_data(self.hass, self.resource)
-            if value:
-                self._attr_native_value = round(value, 2)
-                self.initialised = True
-        else:
-            # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
-            if await should_update():
-                value = await daily_data(self.hass, self.resource)
-                if value:
-                    self._attr_native_value = round(value, 2)
+            readings = await daily_data(self.hass, self.resource)
+            hist_states = []
+            for reading in readings:
+                hist_states.append(HistoricalState(  # noqa: PERF401
+                    state = reading[1].value,
+                    dt = dtutil.as_local(reading[0])
+                ))
+            self._attr_historical_states = hist_states
+            self.initialised = True
+        elif await should_update():
+            # Only update the sensor if it's between 1-5 or 31-35minutes past the hour
+            readings = await daily_data(self.hass, self.resource)
+            hist_states = []
+            for reading in readings:
+                hist_states.append(HistoricalState(  # noqa: PERF401
+                    state = reading[1].value,
+                    dt = reading[0]
+                ))
+            self._attr_historical_states = hist_states
+
+    def get_statistic_metadata(self) -> StatisticMetaData:
+        meta = super().get_statistic_metadata()
+        meta["has_sum"] = True
+        meta["has_mean"] = True
+
+        return meta
+
+    async def async_calculate_statistic_data(
+        self, hist_states: list[HistoricalState], *, latest: dict | None = None
+    ) -> list[StatisticData]:
+        #
+        # Group historical states by hour
+        # Calculate sum, mean, etc...
+        #
+
+        accumulated = latest["sum"] if latest else 0
+
+        def hour_block_for_hist_state(hist_state: HistoricalState) -> datetime:
+            # XX:00:00 states belongs to previous hour block
+            if hist_state.dt.minute == 0 and hist_state.dt.second == 0:
+                dt = hist_state.dt - timedelta(hours=1)
+                return dt.replace(minute=0, second=0, microsecond=0)
+
+            else:
+                return hist_state.dt.replace(minute=0, second=0, microsecond=0)
+
+        ret = []
+        for dt, collection_it in itertools.groupby(
+            hist_states, key=hour_block_for_hist_state
+        ):
+            collection = list(collection_it)
+            mean = statistics.mean([x.state for x in collection])
+            partial_sum = sum([x.state for x in collection])
+            accumulated = accumulated + partial_sum
+
+            ret.append(
+                StatisticData(
+                    start=dt,
+                    state=partial_sum,
+                    mean=mean,
+                    sum=accumulated,
+                )
+            )
+
+        return ret
 
 
-class Cost(SensorEntity):
+class Cost(PollUpdateMixin, HistoricalSensor, SensorEntity):
     """Sensor usage for daily cost."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_has_entity_name = True
     _attr_name = "Cost (today)"
     _attr_native_unit_of_measurement = "GBP"
-    _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
@@ -305,6 +361,9 @@ class Cost(SensorEntity):
         self.meter = None
         self.resource = resource
         self.virtual_entity = virtual_entity
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -317,20 +376,75 @@ class Cost(SensorEntity):
             name=device_name(self.resource, self.virtual_entity),
         )
 
-    async def async_update(self) -> None:
+    async def async_update_historical(self) -> None:
         """Fetch new data for the sensor."""
+        # Get data on initial startup
         if not self.initialised:
-            value = await daily_data(self.hass, self.resource)
-            if value:
-                self._attr_native_value = round(value / 100, 2)
-                self.initialised = True
-        else:
-            # Only update the sensor if it's between 0-5 or 30-35 minutes past the hour
-            if await should_update():
-                value = await daily_data(self.hass, self.resource)
-                if value:
-                    self._attr_native_value = round(value / 100, 2)
+            readings = await daily_data(self.hass, self.resource)
+            hist_states = []
+            for reading in readings:
+                hist_states.append(HistoricalState(  # noqa: PERF401
+                    state = reading[1].value,
+                    dt = dtutil.as_local(reading[0])
+                ))
+            self._attr_historical_states = hist_states
+            self.initialised = True
+        elif await should_update():
+            # Only update the sensor if it's between 1-5 or 31-35minutes past the hour
+            readings = await daily_data(self.hass, self.resource)
+            hist_states = []
+            for reading in readings:
+                hist_states.append(HistoricalState(  # noqa: PERF401
+                    state = reading[1].value,
+                    dt = reading[0]
+                ))
+            self._attr_historical_states = hist_states
 
+    def get_statistic_metadata(self) -> StatisticMetaData:
+        meta = super().get_statistic_metadata()
+        meta["has_sum"] = True
+        meta["has_mean"] = True
+
+        return meta
+
+    async def async_calculate_statistic_data(
+        self, hist_states: list[HistoricalState], *, latest: dict | None = None
+    ) -> list[StatisticData]:
+        #
+        # Group historical states by hour
+        # Calculate sum, mean, etc...
+        #
+
+        accumulated = latest["sum"] if latest else 0
+
+        def hour_block_for_hist_state(hist_state: HistoricalState) -> datetime:
+            # XX:00:00 states belongs to previous hour block
+            if hist_state.dt.minute == 0 and hist_state.dt.second == 0:
+                dt = hist_state.dt - timedelta(hours=1)
+                return dt.replace(minute=0, second=0, microsecond=0)
+
+            else:
+                return hist_state.dt.replace(minute=0, second=0, microsecond=0)
+
+        ret = []
+        for dt, collection_it in itertools.groupby(
+            hist_states, key=hour_block_for_hist_state
+        ):
+            collection = list(collection_it)
+            mean = statistics.mean([x.state for x in collection])
+            partial_sum = sum([x.state for x in collection])
+            accumulated = accumulated + partial_sum
+
+            ret.append(
+                StatisticData(
+                    start=dt,
+                    state=partial_sum,
+                    mean=mean,
+                    sum=accumulated,
+                )
+            )
+
+        return ret
 
 class TariffCoordinator(DataUpdateCoordinator):
     """Data update coordinator for the tariff sensors."""
