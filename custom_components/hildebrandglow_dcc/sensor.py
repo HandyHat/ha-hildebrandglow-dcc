@@ -4,7 +4,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, time, timedelta
 import logging
-
+import itertools
+import statistics
 import requests
 
 from homeassistant.components.sensor import (
@@ -21,7 +22,8 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-
+from homeassistant.components import recorder
+from homeassistant.components.recorder import statistics
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -155,15 +157,15 @@ async def should_update() -> bool:
     return False
 
 
-async def daily_data(hass: HomeAssistant, resource) -> float:
+async def daily_data(hass: HomeAssistant, resource, t_from: datetime = None) -> (float, str):
     """Get daily usage from the API."""
     # Always pull down the last 6 hours of readings
     now = datetime.now()
     # Round to the day to set time to 00:00:00
-    t_from = await hass.async_add_executor_job(resource.round, datetime.now() - timedelta(hours=6), "P1D")
-    # Round to the minute
-    t_to = await hass.async_add_executor_job(resource.round, now, "PT1M")
-
+    if t_from is None:
+        t_from = await hass.async_add_executor_job(resource.round, datetime.now() - timedelta(hours=6), "P1D")
+    # Round to the minute subtract 1 hour to account for non complete hours
+    t_to = await hass.async_add_executor_job(resource.round, (now - timedelta(hours=1)).replace(minute= 59, second=59), "PT1M")
     # Tell Hildebrand to pull latest DCC data
     try:
         await hass.async_add_executor_job(resource.catchup)
@@ -186,7 +188,7 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
 
     try:
         readings = await hass.async_add_executor_job(
-            resource.get_readings, t_from, t_to, "PT30M", "sum", True
+            resource.get_readings, t_from, t_to, "PT1H", "sum", True
         )
         _LOGGER.debug("Successfully got daily usage for resource id %s", resource.id)
         return readings
@@ -235,68 +237,11 @@ async def tariff_data(hass: HomeAssistant, resource) -> float:
             _LOGGER.exception("Unexpected exception: %s. Please open an issue", ex)
     return None
 
-
-class Usage(PollUpdateMixin, HistoricalSensor, SensorEntity):
-    """Sensor object for daily usage."""
-
-    _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_has_entity_name = True
-    _attr_name = "Usage (today)"
-    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-
-    def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
-        """Initialize the sensor."""
-        self._attr_unique_id = resource.id
-
-        self.hass = hass
-        self.initialised = False
-        self.resource = resource
-        self.virtual_entity = virtual_entity
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-
+class HistoricalSensorMixin(PollUpdateMixin, HistoricalSensor, SensorEntity):
     @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.resource.id)},
-            manufacturer="Hildebrand",
-            model="Glow (DCC)",
-            name=device_name(self.resource, self.virtual_entity),
-        )
-
-    @property
-    def icon(self) -> str | None:
-        """Icon to use in the frontend."""
-        # Only the gas usage sensor needs an icon as the others inherit from their device class
-        if self.resource.classifier == "gas.consumption":
-            return "mdi:fire"
-
-    async def async_update_historical(self) -> None:
-        """Fetch new data for the sensor."""
-        # Get data on initial startup
-        if not self.initialised:
-            readings = await daily_data(self.hass, self.resource)
-            hist_states = []
-            for reading in readings:
-                hist_states.append(HistoricalState(  # noqa: PERF401
-                    state = reading[1].value,
-                    dt = dtutil.as_local(reading[0])
-                ))
-            self._attr_historical_states = hist_states
-            self.initialised = True
-        elif await should_update():
-            # Only update the sensor if it's between 1-5 or 31-35minutes past the hour
-            readings = await daily_data(self.hass, self.resource)
-            hist_states = []
-            for reading in readings:
-                hist_states.append(HistoricalState(  # noqa: PERF401
-                    state = reading[1].value,
-                    dt = reading[0]
-                ))
-            self._attr_historical_states = hist_states
-
+    def statistic_id(self) -> str:
+        return self.entity_id
+    
     def get_statistic_metadata(self) -> StatisticMetaData:
         meta = super().get_statistic_metadata()
         meta["has_sum"] = True
@@ -340,11 +285,120 @@ class Usage(PollUpdateMixin, HistoricalSensor, SensorEntity):
                     sum=accumulated,
                 )
             )
+        return ret
 
+class Usage(PollUpdateMixin, HistoricalSensor, SensorEntity):
+    """Sensor object for daily usage."""
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_has_entity_name = True
+    _attr_name = "Usage (today)"
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+
+    def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
+        """Initialize the sensor."""
+        self._attr_unique_id = resource.id
+        self.UPDATE_INTERVAL = timedelta(minutes = 5)
+        self.hass = hass
+        self.initialised = False
+        self.resource = resource
+        self.virtual_entity = virtual_entity
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.resource.id)},
+            manufacturer="Hildebrand",
+            model="Glow (DCC)",
+            name=device_name(self.resource, self.virtual_entity),
+        )
+
+    @property
+    def icon(self) -> str | None:
+        """Icon to use in the frontend."""
+        # Only the gas usage sensor needs an icon as the others inherit from their device class
+        if self.resource.classifier == "gas.consumption":
+            return "mdi:fire"
+
+    async def async_update_historical(self) -> None:
+        """Fetch new data for the sensor."""
+        if not self.initialised:
+            readings = await daily_data(self.hass, self.resource)
+            hist_states = []
+            for reading in readings:
+                hist_states.append(HistoricalState(  # noqa: PERF401
+                    state = reading[1].value,
+                    # add 1 minute to date so it can correctly call into the hour group
+                    dt = dtutil.as_local(reading[0] + timedelta(minutes=1))
+                ))
+            self._attr_historical_states = hist_states
+            self.initialised = True
+        else:
+            if await should_update():
+                # Only update the sensor if it's between 1-5 or 31-35minutes past the hour
+                readings = await daily_data(self.hass, self.resource)
+                hist_states = []
+                for reading in readings:
+                    hist_states.append(HistoricalState(  # noqa: PERF401
+                        state = reading[1].value,
+                        dt = dtutil.as_local(reading[0] + timedelta(minutes=1))
+                    ))
+                self._attr_historical_states = hist_states
+
+    @property
+    def statistic_id(self) -> str:
+        return self.entity_id
+
+    def get_statistic_metadata(self) -> StatisticMetaData:
+        meta = super().get_statistic_metadata()
+        meta["has_sum"] = True
+        meta["has_mean"] = True
+
+        return meta
+
+    async def async_calculate_statistic_data(
+        self, hist_states: list[HistoricalState], *, latest: dict | None = None
+    ) -> list[StatisticData]:
+        #
+        # Group historical states by hour
+        # Calculate sum, mean, etc...
+        #
+        accumulated = latest["sum"] if latest else 0
+
+        def hour_block_for_hist_state(hist_state: HistoricalState) -> datetime:
+            # XX:00:00 states belongs to previous hour block
+            if hist_state.dt.minute == 0 and hist_state.dt.second == 0:
+                dt = hist_state.dt - timedelta(hours=1)
+                return dt.replace(minute=0, second=0, microsecond=0)
+
+            else:
+                return hist_state.dt.replace(minute=0, second=0, microsecond=0)
+
+        ret = []
+        for dt, collection_it in itertools.groupby(
+            hist_states, key=hour_block_for_hist_state
+        ):
+            collection = list(collection_it)
+            mean = statistics.mean([x.state for x in collection])
+            partial_sum = sum([x.state for x in collection])
+            accumulated = accumulated + partial_sum
+
+            ret.append(
+                StatisticData(
+                    start=dt,
+                    state=partial_sum,
+                    mean=mean,
+                    sum=accumulated,
+                )
+            )
         return ret
 
 
-class Cost(PollUpdateMixin, HistoricalSensor, SensorEntity):
+class Cost(HistoricalSensorMixin):
     """Sensor usage for daily cost."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -355,7 +409,7 @@ class Cost(PollUpdateMixin, HistoricalSensor, SensorEntity):
     def __init__(self, hass: HomeAssistant, resource, virtual_entity) -> None:
         """Initialize the sensor."""
         self._attr_unique_id = resource.id
-
+        self.UPDATE_INTERVAL = timedelta(minutes = 5)
         self.hass = hass
         self.initialised = False
         self.meter = None
@@ -384,9 +438,9 @@ class Cost(PollUpdateMixin, HistoricalSensor, SensorEntity):
             hist_states = []
             for reading in readings:
                 hist_states.append(HistoricalState(  # noqa: PERF401
-                    state = reading[1].value,
-                    dt = dtutil.as_local(reading[0])
-                ))
+                    state = reading[1].value / 100,
+                    dt = dtutil.as_local(reading[0] + timedelta(minutes=1)))
+                )
             self._attr_historical_states = hist_states
             self.initialised = True
         elif await should_update():
@@ -395,56 +449,11 @@ class Cost(PollUpdateMixin, HistoricalSensor, SensorEntity):
             hist_states = []
             for reading in readings:
                 hist_states.append(HistoricalState(  # noqa: PERF401
-                    state = reading[1].value,
-                    dt = reading[0]
+                    state = reading[1].value / 100,
+                    dt = dtutil.as_local(reading[0] + timedelta(minutes=1))
                 ))
             self._attr_historical_states = hist_states
-
-    def get_statistic_metadata(self) -> StatisticMetaData:
-        meta = super().get_statistic_metadata()
-        meta["has_sum"] = True
-        meta["has_mean"] = True
-
-        return meta
-
-    async def async_calculate_statistic_data(
-        self, hist_states: list[HistoricalState], *, latest: dict | None = None
-    ) -> list[StatisticData]:
-        #
-        # Group historical states by hour
-        # Calculate sum, mean, etc...
-        #
-
-        accumulated = latest["sum"] if latest else 0
-
-        def hour_block_for_hist_state(hist_state: HistoricalState) -> datetime:
-            # XX:00:00 states belongs to previous hour block
-            if hist_state.dt.minute == 0 and hist_state.dt.second == 0:
-                dt = hist_state.dt - timedelta(hours=1)
-                return dt.replace(minute=0, second=0, microsecond=0)
-
-            else:
-                return hist_state.dt.replace(minute=0, second=0, microsecond=0)
-
-        ret = []
-        for dt, collection_it in itertools.groupby(
-            hist_states, key=hour_block_for_hist_state
-        ):
-            collection = list(collection_it)
-            mean = statistics.mean([x.state for x in collection])
-            partial_sum = sum([x.state for x in collection])
-            accumulated = accumulated + partial_sum
-
-            ret.append(
-                StatisticData(
-                    start=dt,
-                    state=partial_sum,
-                    mean=mean,
-                    sum=accumulated,
-                )
-            )
-
-        return ret
+        _LOGGER.debug(self._attr_historical_states)
 
 class TariffCoordinator(DataUpdateCoordinator):
     """Data update coordinator for the tariff sensors."""
