@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import datetime, time, timedelta
 import logging
 
+from pytz import timezone
 import requests
 
 from homeassistant.components.sensor import (
@@ -25,6 +26,9 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=5)
+
+# Replace 'Europe/London' with your actual timezone
+tz = timezone("Europe/London")
 
 
 async def async_setup_entry(
@@ -135,7 +139,7 @@ def device_name(resource, virtual_entity) -> str:
 
 async def should_update() -> bool:
     """Check if time is between 0-5 or 30-35 minutes past the hour."""
-    minutes = datetime.now().minute
+    minutes = datetime.now(tz).minute
     if (0 <= minutes <= 5) or (30 <= minutes <= 35):
         return True
     return False
@@ -145,11 +149,11 @@ async def daily_data(hass: HomeAssistant, resource) -> float:
     """Get daily usage from the API."""
     # If it's before 01:06, we need to fetch yesterday's data
     # Should only need to be before 00:36 but gas data can be 30 minutes behind electricity data
-    if datetime.now().time() <= time(1, 5):
+    if datetime.now(tz).time() <= time(1, 5):
         _LOGGER.debug("Fetching yesterday's data")
-        now = datetime.now() - timedelta(days=1)
+        now = datetime.now(tz) - timedelta(days=1)
     else:
-        now = datetime.now()
+        now = datetime.now(tz)
     # Round to the day to set time to 00:00:00
     t_from = await hass.async_add_executor_job(resource.round, now, "P1D")
     # Round to the minute
